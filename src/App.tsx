@@ -10,6 +10,7 @@ import SubjectPage from "@/pages/SubjectPage";
 import LabPage from "@/pages/LabPage";
 import RevisionPage from "@/pages/RevisionPage";
 import ProfilePage from "@/pages/ProfilePage";
+import LecturesPage from "@/pages/LecturesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
               <Route path="/lab/:id" element={<LabPage />} />
               <Route path="/revision" element={<RevisionPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/lectures" element={<LecturesPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
