@@ -1,8 +1,7 @@
 import {
-  LayoutDashboard, BookOpen, FlaskConical, User, Zap, ChevronDown, GraduationCap,
+  LayoutDashboard, BookOpen, FlaskConical, User, Zap, GraduationCap, Video,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
 import { useProgress } from "@/context/ProgressContext";
 import { getSemester } from "@/data/syllabus";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -16,6 +15,7 @@ import {
 
 const mainNav = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Lecture Videos", url: "/lectures", icon: Video },
   { title: "Last Minute Revision", url: "/revision", icon: Zap },
   { title: "Profile", url: "/profile", icon: User },
 ];
@@ -23,7 +23,6 @@ const mainNav = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
   const { semester, setSemester } = useProgress();
   const semData = getSemester(semester);
   const subjects = semData?.subjects.filter(s => !s.isLab) || [];
@@ -32,17 +31,20 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sankalp-gradient text-primary-foreground font-bold text-sm shadow-sm">
             S
           </div>
           {!collapsed && (
-            <span className="text-lg font-bold tracking-tight">Sankalp</span>
+            <div>
+              <span className="text-base font-bold tracking-tight">Sankalp</span>
+              <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Exam Preparation</p>
+            </div>
           )}
         </div>
         {!collapsed && (
           <Select value={String(semester)} onValueChange={v => setSemester(Number(v))}>
-            <SelectTrigger className="mt-3 h-9 text-sm">
+            <SelectTrigger className="mt-3 h-9 text-sm bg-muted/50 border-0">
               <GraduationCap className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
               <SelectValue />
             </SelectTrigger>
@@ -59,13 +61,13 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider">Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainNav.map(item => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
+                    <NavLink to={item.url} end={item.url === "/"} className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
                       <item.icon className="mr-2 h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
@@ -78,8 +80,8 @@ export function AppSidebar() {
 
         {subjects.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel>
-              <BookOpen className="mr-2 h-3.5 w-3.5" />
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider">
+              <BookOpen className="mr-1.5 h-3 w-3" />
               Subjects
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -88,10 +90,10 @@ export function AppSidebar() {
                   <SidebarMenuItem key={sub.id}>
                     <SidebarMenuButton asChild>
                       <NavLink to={`/subject/${sub.id}`} className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
-                        <span className="mr-2 h-4 w-4 shrink-0 rounded bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                        <span className="mr-2 h-5 w-5 shrink-0 rounded-md bg-muted flex items-center justify-center text-[9px] font-bold text-muted-foreground">
                           {sub.code.slice(-2)}
                         </span>
-                        {!collapsed && <span className="truncate">{sub.name}</span>}
+                        {!collapsed && <span className="truncate text-[13px]">{sub.name}</span>}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -103,8 +105,8 @@ export function AppSidebar() {
 
         {labs.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel>
-              <FlaskConical className="mr-2 h-3.5 w-3.5" />
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider">
+              <FlaskConical className="mr-1.5 h-3 w-3" />
               Labs
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -114,7 +116,7 @@ export function AppSidebar() {
                     <SidebarMenuButton asChild>
                       <NavLink to={`/lab/${lab.id}`} className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
                         <FlaskConical className="mr-2 h-4 w-4 shrink-0" />
-                        {!collapsed && <span className="truncate">{lab.name}</span>}
+                        {!collapsed && <span className="truncate text-[13px]">{lab.name}</span>}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -125,9 +127,16 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-3">
+      <SidebarFooter className="p-3 border-t">
         <div className="flex items-center justify-between">
-          {!collapsed && <span className="text-xs text-muted-foreground">Sem {semester} · CSE</span>}
+          {!collapsed && (
+            <div className="flex items-center gap-2">
+              <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                <GraduationCap className="h-3 w-3 text-primary" />
+              </div>
+              <span className="text-xs text-muted-foreground">Sem {semester}</span>
+            </div>
+          )}
           <ThemeToggle />
         </div>
       </SidebarFooter>
