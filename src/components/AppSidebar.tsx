@@ -1,5 +1,6 @@
 import {
   LayoutDashboard, BookOpen, FlaskConical, User, Zap, GraduationCap, Video,
+  Timer, CalendarCheck, FileQuestion,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useProgress } from "@/context/ProgressContext";
@@ -15,8 +16,11 @@ import {
 
 const mainNav = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Study Planner", url: "/planner", icon: CalendarCheck },
+  { title: "Pomodoro Timer", url: "/pomodoro", icon: Timer },
   { title: "Lecture Videos", url: "/lectures", icon: Video },
-  { title: "Last Minute Revision", url: "/revision", icon: Zap },
+  { title: "PYQ Papers", url: "/pyq", icon: FileQuestion },
+  { title: "Quick Revision", url: "/revision", icon: Zap },
   { title: "Profile", url: "/profile", icon: User },
 ];
 

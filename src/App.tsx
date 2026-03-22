@@ -12,6 +12,9 @@ import LabPage from "@/pages/LabPage";
 import RevisionPage from "@/pages/RevisionPage";
 import ProfilePage from "@/pages/ProfilePage";
 import LecturesPage from "@/pages/LecturesPage";
+import PlannerPage from "@/pages/PlannerPage";
+import PomodoroPage from "@/pages/PomodoroPage";
+import PYQPage from "@/pages/PYQPage";
 import AuthPage from "@/pages/AuthPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -41,13 +44,15 @@ function ProtectedRoutes() {
           <Route path="/revision" element={<RevisionPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/lectures" element={<LecturesPage />} />
+          <Route path="/planner" element={<PlannerPage />} />
+          <Route path="/pomodoro" element={<PomodoroPage />} />
+          <Route path="/pyq" element={<PYQPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AppLayout>
     </ProgressProvider>
   );
 }
-
 function AuthGuard() {
   const { user, loading } = useAuth();
 

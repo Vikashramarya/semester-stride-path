@@ -1,31 +1,112 @@
 import { useProgress } from "@/context/ProgressContext";
 import { getSemester } from "@/data/syllabus";
 import { useNavigate } from "react-router-dom";
-import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Clock, AlertTriangle, Zap, ChevronRight, FlaskConical, TrendingUp, Video, Target } from "lucide-react";
-import { useMemo } from "react";
+import {
+  BookOpen, Clock, AlertTriangle, ChevronRight, FlaskConical,
+  TrendingUp, Video, Target, Flame, CalendarCheck, Timer, FileQuestion, CheckCircle2,
+} from "lucide-react";
+import { useMemo, useEffect, useState, useCallback } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, Tooltip, Cell,
 } from "recharts";
 
 const CHART_COLORS = [
-  "hsl(152, 55%, 42%)",
-  "hsl(217, 71%, 53%)",
-  "hsl(38, 92%, 50%)",
-  "hsl(0, 72%, 51%)",
-  "hsl(270, 50%, 55%)",
-  "hsl(180, 50%, 42%)",
+  "hsl(152, 55%, 42%)", "hsl(217, 71%, 53%)", "hsl(38, 92%, 50%)",
+  "hsl(0, 72%, 51%)", "hsl(270, 50%, 55%)", "hsl(180, 50%, 42%)",
 ];
+
+const MOTIVATIONAL_MESSAGES = [
+  "Consistency beats intensity. Keep going! 💪",
+  "Every topic you finish is a step closer to success 🎯",
+  "Small daily progress adds up to big results 🚀",
+  "You're building a stronger future, one topic at a time 📚",
+  "Focus on progress, not perfection ✨",
+];
+
+interface TodayTask {
+  id: string;
+  subject: string;
+  topic: string;
+  is_completed: boolean;
+  duration_minutes: number;
+}
 
 export default function Dashboard() {
   const { semester, completedTopics, examDate, userName } = useProgress();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const semData = getSemester(semester);
   const subjects = semData?.subjects.filter(s => !s.isLab) || [];
   const labs = semData?.subjects.filter(s => s.isLab) || [];
+
+  const [streak, setStreak] = useState(0);
+  const [todayTasks, setTodayTasks] = useState<TodayTask[]>([]);
+  const [todayMinutes, setTodayMinutes] = useState(0);
+
+  const motivationalMsg = useMemo(
+    () => MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)],
+    []
+  );
+
+  const fetchDashboardData = useCallback(async () => {
+    if (!user) return;
+    const today = new Date().toISOString().split("T")[0];
+
+    // Fetch today's tasks
+    const { data: tasks } = await supabase
+      .from("study_tasks")
+      .select("id, subject, topic, is_completed, duration_minutes")
+      .eq("user_id", user.id)
+      .eq("task_date", today)
+      .order("created_at");
+    setTodayTasks((tasks as TodayTask[]) || []);
+
+    // Fetch today's study minutes
+    const { data: sessions } = await supabase
+      .from("study_sessions")
+      .select("duration_minutes")
+      .eq("user_id", user.id)
+      .eq("session_date", today);
+    setTodayMinutes(sessions?.reduce((s, r) => s + r.duration_minutes, 0) || 0);
+
+    // Calculate streak - count consecutive days with completed tasks or sessions
+    const { data: taskDates } = await supabase
+      .from("study_tasks")
+      .select("task_date")
+      .eq("user_id", user.id)
+      .eq("is_completed", true)
+      .order("task_date", { ascending: false });
+
+    const { data: sessionDates } = await supabase
+      .from("study_sessions")
+      .select("session_date")
+      .eq("user_id", user.id)
+      .order("session_date", { ascending: false });
+
+    const allDates = new Set([
+      ...(taskDates?.map(t => t.task_date) || []),
+      ...(sessionDates?.map(s => s.session_date) || []),
+    ]);
+
+    let streakCount = 0;
+    const d = new Date();
+    while (true) {
+      const dateStr = d.toISOString().split("T")[0];
+      if (allDates.has(dateStr)) {
+        streakCount++;
+        d.setDate(d.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    setStreak(streakCount);
+  }, [user]);
+
+  useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
 
   const daysLeft = useMemo(() => {
     const diff = new Date(examDate).getTime() - Date.now();
@@ -38,9 +119,8 @@ export default function Dashboard() {
       const completed = allTopics.filter(t => completedTopics[t.id]).length;
       const total = allTopics.length;
       const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-      const pendingUnits = sub.units.filter(u => u.topics.some(t => !completedTopics[t.id]));
       const highWeightageUnits = sub.units.filter(u => u.weightage >= 25 && u.topics.some(t => !completedTopics[t.id]));
-      return { ...sub, progress, completed, total, pendingUnits, highWeightageUnits };
+      return { ...sub, progress, completed, total, highWeightageUnits };
     });
   }, [subjects, completedTopics]);
 
@@ -52,38 +132,16 @@ export default function Dashboard() {
   const radarData = useMemo(() => {
     return subjectStats.map(s => ({
       subject: s.name.split(" ").map(w => w[0]).join("").slice(0, 4),
-      fullName: s.name,
       progress: s.progress,
     }));
   }, [subjectStats]);
 
-  const unitWeightageData = useMemo(() => {
-    return subjectStats.flatMap((s, si) =>
-      s.units.map(u => ({
-        name: `${s.name.split(" ")[0]} U${u.id.slice(-1)}`,
-        weightage: u.weightage,
-        done: u.topics.filter(t => completedTopics[t.id]).length,
-        total: u.topics.length,
-        color: CHART_COLORS[si % CHART_COLORS.length],
-      }))
-    );
-  }, [subjectStats, completedTopics]);
-
-  const weakUnits = useMemo(() => {
-    return subjectStats.flatMap(s =>
-      s.units.map(u => {
-        const done = u.topics.filter(t => completedTopics[t.id]).length;
-        const pct = u.topics.length > 0 ? Math.round((done / u.topics.length) * 100) : 0;
-        return { subjectName: s.name, unitName: u.name, progress: pct, weightage: u.weightage };
-      })
-    ).filter(u => u.progress < 50).sort((a, b) => b.weightage - a.weightage).slice(0, 5);
-  }, [subjectStats, completedTopics]);
-
   const urgencyColor = daysLeft <= 7 ? "text-destructive" : daysLeft <= 14 ? "text-sankalp-amber" : "text-primary";
+  const todayCompleted = todayTasks.filter(t => t.is_completed).length;
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
-      {/* Hero header */}
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+      {/* Hero */}
       <div className="relative overflow-hidden rounded-2xl sankalp-gradient p-6 md:p-8 text-primary-foreground animate-fade-in-up">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.15),transparent_60%)]" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -92,16 +150,20 @@ export default function Dashboard() {
             <h1 className="text-2xl md:text-3xl font-bold leading-tight">
               Welcome back, {userName} 👋
             </h1>
-            <p className="text-sm opacity-80 mt-2">
-              {overallProgress >= 75 ? "Great progress! Keep it up!" :
-               overallProgress >= 40 ? "You're making steady progress. Focus on weak units!" :
-               "Let's get started! Complete topics to track progress."}
-            </p>
+            <p className="text-sm opacity-80 mt-2">{motivationalMsg}</p>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-5">
             <div className="text-center">
               <p className="text-3xl md:text-4xl font-bold tabular-nums">{overallProgress}%</p>
-              <p className="text-xs opacity-70">completed</p>
+              <p className="text-xs opacity-70">syllabus</p>
+            </div>
+            <div className="w-px h-12 bg-primary-foreground/20" />
+            <div className="text-center">
+              <div className="flex items-center gap-1">
+                <Flame className="h-5 w-5 text-amber-300" />
+                <p className="text-3xl md:text-4xl font-bold tabular-nums">{streak}</p>
+              </div>
+              <p className="text-xs opacity-70">day streak</p>
             </div>
             <div className="w-px h-12 bg-primary-foreground/20" />
             <div className="text-center">
@@ -118,9 +180,9 @@ export default function Dashboard() {
           { icon: BookOpen, label: "Subjects", value: subjects.length, sub: `${labs.length} labs`, color: "text-primary" },
           { icon: Target, label: "Topics Done", value: subjectStats.reduce((a, s) => a + s.completed, 0), sub: `of ${subjectStats.reduce((a, s) => a + s.total, 0)}`, color: "text-sankalp-green" },
           { icon: Clock, label: "Exam In", value: daysLeft, sub: daysLeft === 1 ? "day" : "days", color: urgencyColor },
-          { icon: AlertTriangle, label: "Weak Units", value: weakUnits.length, sub: "need focus", color: "text-sankalp-amber" },
+          { icon: Timer, label: "Studied Today", value: todayMinutes, sub: "minutes", color: "text-sankalp-blue" },
         ].map((stat, i) => (
-          <Card key={i} className="shadow-sm hover:shadow-md transition-shadow border-0 bg-card">
+          <Card key={i} className="shadow-sm hover:shadow-md transition-shadow border-0">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className={`p-1.5 rounded-lg bg-muted ${stat.color}`}>
@@ -135,14 +197,60 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Charts row */}
+      {/* Today's tasks + Radar */}
       <div className="grid md:grid-cols-2 gap-4 animate-fade-in-up" style={{ animationDelay: "160ms" }}>
+        {/* Today's tasks */}
+        <Card className="shadow-sm border-0">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <CalendarCheck className="h-4 w-4 text-primary" />
+                Today's Tasks
+              </span>
+              <Badge variant="secondary" className="text-[10px]">
+                {todayCompleted}/{todayTasks.length}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {todayTasks.length === 0 ? (
+              <div className="py-6 text-center">
+                <p className="text-sm text-muted-foreground">No tasks for today</p>
+                <button
+                  onClick={() => navigate("/planner")}
+                  className="text-xs text-primary hover:underline mt-1"
+                >
+                  Add tasks in Planner →
+                </button>
+              </div>
+            ) : (
+              todayTasks.slice(0, 5).map(task => (
+                <div key={task.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
+                  <CheckCircle2 className={`h-4 w-4 shrink-0 ${task.is_completed ? "text-primary" : "text-muted-foreground/30"}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-xs font-medium truncate ${task.is_completed ? "line-through text-muted-foreground" : ""}`}>
+                      {task.topic}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">{task.subject}</p>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground tabular-nums">{task.duration_minutes}m</span>
+                </div>
+              ))
+            )}
+            {todayTasks.length > 5 && (
+              <button onClick={() => navigate("/planner")} className="text-xs text-primary hover:underline w-full text-center">
+                View all {todayTasks.length} tasks →
+              </button>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Radar chart */}
         <Card className="shadow-sm border-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
-              Subject Progress Overview
+              Subject Progress
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -150,17 +258,8 @@ export default function Dashboard() {
               <ResponsiveContainer width="100%" height={240}>
                 <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
                   <PolarGrid stroke="hsl(var(--border))" />
-                  <PolarAngleAxis
-                    dataKey="subject"
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-                  />
-                  <Radar
-                    dataKey="progress"
-                    stroke="hsl(var(--primary))"
-                    fill="hsl(var(--primary))"
-                    fillOpacity={0.2}
-                    strokeWidth={2}
-                  />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                  <Radar dataKey="progress" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
                 </RadarChart>
               </ResponsiveContainer>
             ) : (
@@ -170,52 +269,36 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
+      </div>
 
-        {/* Unit weightage bar chart */}
-        <Card className="shadow-sm border-0">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Target className="h-4 w-4 text-sankalp-amber" />
-              Unit Weightage & Completion
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {unitWeightageData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={unitWeightageData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
-                  <XAxis dataKey="name" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} interval={0} angle={-30} textAnchor="end" height={50} />
-                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip
-                    contentStyle={{
-                      background: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                      fontSize: "12px",
-                      color: "hsl(var(--foreground))",
-                    }}
-                    formatter={(value: number, name: string) => [
-                      `${value}%`,
-                      name === "weightage" ? "Weightage" : name,
-                    ]}
-                  />
-                  <Bar dataKey="weightage" radius={[4, 4, 0, 0]} maxBarSize={24}>
-                    {unitWeightageData.map((entry, index) => (
-                      <Cell key={index} fill={entry.color} fillOpacity={0.8} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[240px] flex items-center justify-center text-sm text-muted-foreground">
-                No unit data available
+      {/* Quick actions */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fade-in-up" style={{ animationDelay: "240ms" }}>
+        {[
+          { label: "Study Planner", icon: CalendarCheck, path: "/planner", desc: "Plan daily tasks", bg: "bg-primary/10", color: "text-primary" },
+          { label: "Pomodoro Timer", icon: Timer, path: "/pomodoro", desc: "Focus sessions", bg: "bg-sankalp-blue-light", color: "text-sankalp-blue" },
+          { label: "Lecture Videos", icon: Video, path: "/lectures", desc: "Watch lectures", bg: "bg-sankalp-amber-light", color: "text-sankalp-amber" },
+          { label: "PYQ Papers", icon: FileQuestion, path: "/pyq", desc: "Past papers", bg: "bg-sankalp-red-light", color: "text-sankalp-red" },
+        ].map((item, i) => (
+          <Card
+            key={item.path}
+            className="shadow-sm border-0 cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5 active:scale-[0.98]"
+            onClick={() => navigate(item.path)}
+          >
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className={`h-10 w-10 rounded-xl ${item.bg} flex items-center justify-center shrink-0`}>
+                <item.icon className={`h-5 w-5 ${item.color}`} />
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{item.label}</p>
+                <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Subject cards */}
-      <div className="space-y-4">
+      <div className="space-y-4 animate-fade-in-up" style={{ animationDelay: "320ms" }}>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Subjects</h2>
           <Badge variant="secondary" className="text-xs">{subjects.length} subjects</Badge>
@@ -224,8 +307,7 @@ export default function Dashboard() {
           {subjectStats.map((sub, i) => (
             <Card
               key={sub.id}
-              className="shadow-sm cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5 active:scale-[0.98] border-0 animate-fade-in-up group"
-              style={{ animationDelay: `${240 + i * 60}ms` }}
+              className="shadow-sm cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5 active:scale-[0.98] border-0 group"
               onClick={() => navigate(`/subject/${sub.id}`)}
             >
               <CardContent className="p-5">
@@ -244,7 +326,6 @@ export default function Dashboard() {
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0 mt-1" />
                 </div>
-
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">{sub.completed}/{sub.total} topics</span>
@@ -255,21 +336,16 @@ export default function Dashboard() {
                       className="h-full rounded-full transition-all"
                       style={{
                         width: `${sub.progress}%`,
-                        background: sub.progress === 100
-                          ? "hsl(var(--sankalp-green))"
-                          : sub.progress > 50
-                          ? `linear-gradient(90deg, ${CHART_COLORS[i % CHART_COLORS.length]}, ${CHART_COLORS[(i + 1) % CHART_COLORS.length]})`
-                          : CHART_COLORS[i % CHART_COLORS.length],
+                        background: sub.progress === 100 ? "hsl(var(--sankalp-green))" : CHART_COLORS[i % CHART_COLORS.length],
                       }}
                     />
                   </div>
                 </div>
-
                 {sub.highWeightageUnits.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-3">
                     {sub.highWeightageUnits.slice(0, 2).map(u => (
                       <Badge key={u.id} variant="outline" className="text-[10px] bg-sankalp-amber-light text-sankalp-amber border-0 font-medium">
-                        ⚡ {u.name.replace(/Unit \d+: /, "U" + u.id.slice(-1) + " ")} ({u.weightage}%)
+                        ⚡ U{u.id.slice(-1)} ({u.weightage}%)
                       </Badge>
                     ))}
                   </div>
@@ -280,60 +356,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Lecture Videos Quick Link */}
-      <Card
-        className="shadow-sm border-0 cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5 active:scale-[0.98] animate-fade-in-up"
-        style={{ animationDelay: "400ms" }}
-        onClick={() => navigate("/lectures")}
-      >
-        <CardContent className="p-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-sankalp-blue-light flex items-center justify-center">
-              <Video className="h-5 w-5 text-sankalp-blue" />
-            </div>
-            <div>
-              <p className="font-semibold">Lecture Videos</p>
-              <p className="text-xs text-muted-foreground">Watch curated lectures for each subject & unit</p>
-            </div>
-          </div>
-          <ChevronRight className="h-5 w-5 text-muted-foreground" />
-        </CardContent>
-      </Card>
-
-      {/* Weak units */}
-      {weakUnits.length > 0 && (
-        <div className="space-y-3 animate-fade-in-up" style={{ animationDelay: "480ms" }}>
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-sankalp-amber" />
-            Focus Areas
-          </h2>
-          <div className="grid gap-2 md:grid-cols-2">
-            {weakUnits.map((u, i) => (
-              <Card key={i} className="shadow-sm border-0">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-sankalp-amber-light flex items-center justify-center shrink-0">
-                    <span className="text-xs font-bold text-sankalp-amber">{u.weightage}%</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{u.unitName}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{u.subjectName}</p>
-                  </div>
-                  <div className="w-20 space-y-1">
-                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full rounded-full bg-sankalp-amber" style={{ width: `${u.progress}%` }} />
-                    </div>
-                    <p className="text-[10px] text-right text-muted-foreground">{u.progress}%</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Labs quick access */}
+      {/* Labs */}
       {labs.length > 0 && (
-        <div className="space-y-3 animate-fade-in-up" style={{ animationDelay: "560ms" }}>
+        <div className="space-y-3 animate-fade-in-up" style={{ animationDelay: "400ms" }}>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <FlaskConical className="h-4 w-4 text-primary" />
             Lab Practicals

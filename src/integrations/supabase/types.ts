@@ -14,13 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          badge_type: string
+          earned_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          badge_type: string
+          earned_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          badge_type?: string
+          earned_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           course: string | null
           created_at: string
           display_name: string | null
+          exam_date: string | null
           id: string
           semester: number | null
+          study_goal_hours: number | null
           updated_at: string
           user_id: string
         }
@@ -28,8 +51,10 @@ export type Database = {
           course?: string | null
           created_at?: string
           display_name?: string | null
+          exam_date?: string | null
           id?: string
           semester?: number | null
+          study_goal_hours?: number | null
           updated_at?: string
           user_id: string
         }
@@ -37,9 +62,74 @@ export type Database = {
           course?: string | null
           created_at?: string
           display_name?: string | null
+          exam_date?: string | null
           id?: string
           semester?: number | null
+          study_goal_hours?: number | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      study_sessions: {
+        Row: {
+          created_at: string
+          duration_minutes: number
+          id: string
+          session_date: string
+          subject: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes: number
+          id?: string
+          session_date?: string
+          subject?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          session_date?: string
+          subject?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      study_tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          duration_minutes: number
+          id: string
+          is_completed: boolean
+          subject: string
+          task_date: string
+          topic: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          is_completed?: boolean
+          subject: string
+          task_date?: string
+          topic: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          is_completed?: boolean
+          subject?: string
+          task_date?: string
+          topic?: string
           user_id?: string
         }
         Relationships: []
