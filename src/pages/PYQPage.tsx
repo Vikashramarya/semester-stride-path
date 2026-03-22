@@ -1,7 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Download, Eye } from "lucide-react";
-import { useState } from "react";
 
 const pyqData = [
   { semester: 2, label: "Semester 2", file: "/pyqs/2nd_sem_pyqs.pdf" },
@@ -18,8 +17,6 @@ const COLORS = [
 ];
 
 export default function PYQPage() {
-  const [viewing, setViewing] = useState<string | null>(null);
-
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
       <div>
@@ -70,15 +67,11 @@ export default function PYQPage() {
                       Download
                     </a>
                   </div>
-              {viewing === pyq.file && (
-                <div className="mt-4 rounded-lg overflow-hidden border bg-muted/30 animate-fade-in-up">
-                  <iframe
-                    src={pyq.file}
-                    className="w-full h-[500px]"
-                    title={`PYQ ${pyq.label}`}
-                  />
                 </div>
-              )}
+                <Badge variant="secondary" className="text-[10px] shrink-0">
+                  PDF
+                </Badge>
+              </div>
             </CardContent>
           </Card>
         ))}
