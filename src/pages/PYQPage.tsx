@@ -50,27 +50,26 @@ export default function PYQPage() {
                     Previous year question papers
                   </p>
                   <div className="flex gap-2 mt-3">
-                    <button
-                      onClick={() => setViewing(viewing === pyq.file ? null : pyq.file)}
+                    <a
+                      href={pyq.file}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                     >
                       <Eye className="h-3.5 w-3.5" />
-                      {viewing === pyq.file ? "Close" : "View"}
-                    </button>
+                      View PDF
+                    </a>
                     <a
                       href={pyq.file}
-                      download
+                      download={`PYQ_${pyq.label.replace(/\s+/g, "_")}.pdf`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
                     >
                       <Download className="h-3.5 w-3.5" />
                       Download
                     </a>
                   </div>
-                </div>
-                <Badge variant="secondary" className="text-[10px] shrink-0">
-                  PDF
-                </Badge>
-              </div>
               {viewing === pyq.file && (
                 <div className="mt-4 rounded-lg overflow-hidden border bg-muted/30 animate-fade-in-up">
                   <iframe
