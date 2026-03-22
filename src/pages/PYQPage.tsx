@@ -1,7 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Download, Eye } from "lucide-react";
-import { useState } from "react";
 
 const pyqData = [
   { semester: 2, label: "Semester 2", file: "/pyqs/2nd_sem_pyqs.pdf" },
@@ -18,8 +17,6 @@ const COLORS = [
 ];
 
 export default function PYQPage() {
-  const [viewing, setViewing] = useState<string | null>(null);
-
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
       <div>
@@ -50,16 +47,20 @@ export default function PYQPage() {
                     Previous year question papers
                   </p>
                   <div className="flex gap-2 mt-3">
-                    <button
-                      onClick={() => setViewing(viewing === pyq.file ? null : pyq.file)}
+                    <a
+                      href={pyq.file}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                     >
                       <Eye className="h-3.5 w-3.5" />
-                      {viewing === pyq.file ? "Close" : "View"}
-                    </button>
+                      View PDF
+                    </a>
                     <a
                       href={pyq.file}
-                      download
+                      download={`PYQ_${pyq.label.replace(/\s+/g, "_")}.pdf`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
                     >
                       <Download className="h-3.5 w-3.5" />
@@ -71,15 +72,6 @@ export default function PYQPage() {
                   PDF
                 </Badge>
               </div>
-              {viewing === pyq.file && (
-                <div className="mt-4 rounded-lg overflow-hidden border bg-muted/30 animate-fade-in-up">
-                  <iframe
-                    src={pyq.file}
-                    className="w-full h-[500px]"
-                    title={`PYQ ${pyq.label}`}
-                  />
-                </div>
-              )}
             </CardContent>
           </Card>
         ))}
