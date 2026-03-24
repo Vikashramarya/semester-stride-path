@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/sonner";
-import { BookOpen, GraduationCap, Loader2 } from "lucide-react";
+import { BookOpen, Loader2 } from "lucide-react";
+import sankalpLogo from "@/assets/sankalp-logo.png";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -50,9 +51,7 @@ export default function AuthPage() {
       <div className="w-full max-w-md space-y-8">
         {/* Logo */}
         <div className="text-center space-y-3">
-          <div className="mx-auto h-14 w-14 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/25">
-            <GraduationCap className="h-7 w-7 text-primary-foreground" />
-          </div>
+          <img src={sankalpLogo} alt="Sankalp Logo" className="mx-auto h-20 w-20 object-contain" />
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground" style={{ lineHeight: "1.1" }}>
               Sankalp
