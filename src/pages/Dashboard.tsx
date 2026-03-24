@@ -146,7 +146,9 @@ export default function Dashboard() {
       <div className="relative overflow-hidden rounded-2xl sankalp-gradient p-6 md:p-8 text-primary-foreground animate-fade-in-up">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.15),transparent_60%)]" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
+          <div className="flex items-center gap-4">
+            <img src={sankalpLogo} alt="Sankalp" className="h-14 w-14 rounded-xl object-contain bg-white/90 p-1 shadow-sm" />
+            <div>
             <p className="text-sm opacity-80 mb-1">Semester {semester} · B.Tech CSE</p>
             <h1 className="text-2xl md:text-3xl font-bold leading-tight">
               Welcome back, {userName} 👋
