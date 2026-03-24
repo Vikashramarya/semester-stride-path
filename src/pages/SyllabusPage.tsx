@@ -9,7 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useState } from "react";
 
 export default function SyllabusPage() {
-  const { semester, completed, toggleCompleted } = useProgress();
+  const { semester, completedTopics, toggleTopic, isTopicCompleted } = useProgress();
   const semData = getSemester(semester);
   const subjects = semData?.subjects.filter(s => !s.isLab) || [];
   const [openSubjects, setOpenSubjects] = useState<Record<string, boolean>>({});
