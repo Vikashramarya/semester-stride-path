@@ -29,7 +29,7 @@ export default function SyllabusPage() {
     return Math.round((done / allTopics.length) * 100);
   };
 
-  const getUnitProgress = (unitId: string, topics: { id: string }[]) => {
+  const getUnitProgress = (topics: { id: string }[]) => {
     if (topics.length === 0) return 0;
     const done = topics.filter(t => isTopicCompleted(t.id)).length;
     return Math.round((done / topics.length) * 100);
@@ -95,7 +95,7 @@ export default function SyllabusPage() {
                   <CollapsibleContent>
                     <CardContent className="pt-0 space-y-4">
                       {subject.units.map(unit => {
-                        const unitProgress = getUnitProgress(unit.id, unit.topics);
+                        const unitProgress = getUnitProgress(unit.topics);
                         const unitOpen = openUnits[unit.id] ?? true;
 
                         return (
