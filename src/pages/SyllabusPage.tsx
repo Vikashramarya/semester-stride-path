@@ -29,7 +29,7 @@ export default function SyllabusPage() {
 
   const getUnitProgress = (unitId: string, topics: { id: string }[]) => {
     if (topics.length === 0) return 0;
-    const done = topics.filter(t => completed.includes(t.id)).length;
+    const done = topics.filter(t => isTopicCompleted(t.id)).length;
     return Math.round((done / topics.length) * 100);
   };
 
