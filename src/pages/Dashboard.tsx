@@ -1,4 +1,5 @@
 import { useProgress } from "@/context/ProgressContext";
+import sankalpLogo from "@/assets/sankalp-logo.png";
 import { getSemester } from "@/data/syllabus";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
