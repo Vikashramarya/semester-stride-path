@@ -16,6 +16,7 @@ import {
 
 const mainNav = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Syllabus", url: "/syllabus", icon: BookOpen },
   { title: "Study Planner", url: "/planner", icon: CalendarCheck },
   { title: "Pomodoro Timer", url: "/pomodoro", icon: Timer },
   { title: "Lecture Videos", url: "/lectures", icon: Video },

@@ -48,6 +48,7 @@ function ProtectedRoutes() {
           <Route path="/planner" element={<PlannerPage />} />
           <Route path="/pomodoro" element={<PomodoroPage />} />
           <Route path="/pyq" element={<PYQPage />} />
+          <Route path="/syllabus" element={<SyllabusPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AppLayout>
