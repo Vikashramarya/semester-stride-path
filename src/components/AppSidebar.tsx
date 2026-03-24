@@ -6,6 +6,7 @@ import { NavLink } from "@/components/NavLink";
 import { useProgress } from "@/context/ProgressContext";
 import { getSemester } from "@/data/syllabus";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import sankalpLogo from "@/assets/sankalp-logo.png";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter, SidebarHeader, useSidebar,
