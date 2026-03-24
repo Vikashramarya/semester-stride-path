@@ -154,6 +154,7 @@ export default function Dashboard() {
               Welcome back, {userName} 👋
             </h1>
             <p className="text-sm opacity-80 mt-2">{motivationalMsg}</p>
+            </div>
           </div>
           <div className="flex items-center gap-5">
             <div className="text-center">
