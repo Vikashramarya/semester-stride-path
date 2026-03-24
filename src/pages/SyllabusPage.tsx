@@ -23,6 +23,8 @@ export default function SyllabusPage() {
   const getSubjectProgress = (subjectId: string) => {
     const subject = subjects.find(s => s.id === subjectId);
     if (!subject) return 0;
+    const allTopics = subject.units.flatMap(u => u.topics);
+    if (allTopics.length === 0) return 0;
     const done = allTopics.filter(t => isTopicCompleted(t.id)).length;
     return Math.round((done / allTopics.length) * 100);
   };
