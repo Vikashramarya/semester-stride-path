@@ -114,11 +114,11 @@ export default function SyllabusPage() {
                             <CollapsibleContent>
                               <div className="ml-8 mt-1 space-y-1">
                                 {unit.topics.map(topic => {
-                                  const isDone = completed.includes(topic.id);
+                                  const isDone = isTopicCompleted(topic.id);
                                   return (
                                     <button
                                       key={topic.id}
-                                      onClick={() => toggleCompleted(topic.id)}
+                                      onClick={() => toggleTopic(topic.id)}
                                       className="flex items-center gap-2 w-full text-left p-1.5 rounded-md hover:bg-muted/30 transition-colors group"
                                     >
                                       {isDone ? (
