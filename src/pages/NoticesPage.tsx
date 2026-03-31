@@ -79,6 +79,27 @@ export default function NoticesPage() {
         </Button>
       </div>
 
+      {/* Quick Links */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "About University", url: "https://gurugramuniversity.ac.in/discover_gurugram_university/Concept_of_gurugram_university/index.php" },
+          { label: "Admission", url: "https://gurugramuniversity.ac.in/allNotifications/admissionNotice/index.php" },
+          { label: "Examination", url: "https://gurugramuniversity.ac.in/administration/branches_of_the_university/exam/about.php" },
+          { label: "Results", url: "https://gurugramuniversity.ac.in/allNotifications/allNotice/index.php" },
+        ].map((link) => (
+          <a
+            key={link.label}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-lg border bg-card p-3 text-sm font-medium hover:bg-muted/50 transition-colors"
+          >
+            <ExternalLink className="h-4 w-4 text-primary shrink-0" />
+            <span className="truncate">{link.label}</span>
+          </a>
+        ))}
+      </div>
+
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
