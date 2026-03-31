@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, BookOpen, FlaskConical, User, Zap, GraduationCap, Video,
-  Timer, CalendarCheck, FileQuestion, Bell,
+  Timer, CalendarCheck, FileQuestion, Bell, Bot, Brain,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useProgress } from "@/context/ProgressContext";
@@ -23,6 +23,8 @@ const mainNav = [
   { title: "Lecture Videos", url: "/lectures", icon: Video },
   { title: "PYQ Papers", url: "/pyq", icon: FileQuestion },
   { title: "Quick Revision", url: "/revision", icon: Zap },
+  { title: "AI Chatbot", url: "/chatbot", icon: Bot },
+  { title: "Quiz Mode", url: "/quiz", icon: Brain },
   { title: "University Notices", url: "/notices", icon: Bell },
   { title: "Profile", url: "/profile", icon: User },
 ];

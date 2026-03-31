@@ -17,6 +17,8 @@ import PomodoroPage from "@/pages/PomodoroPage";
 import PYQPage from "@/pages/PYQPage";
 import SyllabusPage from "@/pages/SyllabusPage";
 import NoticesPage from "@/pages/NoticesPage";
+import ChatbotPage from "@/pages/ChatbotPage";
+import QuizPage from "@/pages/QuizPage";
 import AuthPage from "@/pages/AuthPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -51,6 +53,8 @@ function ProtectedRoutes() {
           <Route path="/pyq" element={<PYQPage />} />
           <Route path="/syllabus" element={<SyllabusPage />} />
           <Route path="/notices" element={<NoticesPage />} />
+          <Route path="/chatbot" element={<ChatbotPage />} />
+          <Route path="/quiz" element={<QuizPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AppLayout>
