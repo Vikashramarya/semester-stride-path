@@ -53,6 +53,8 @@ function ProtectedRoutes() {
           <Route path="/pyq" element={<PYQPage />} />
           <Route path="/syllabus" element={<SyllabusPage />} />
           <Route path="/notices" element={<NoticesPage />} />
+          <Route path="/chatbot" element={<ChatbotPage />} />
+          <Route path="/quiz" element={<QuizPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AppLayout>
