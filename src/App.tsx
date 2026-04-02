@@ -19,6 +19,7 @@ import SyllabusPage from "@/pages/SyllabusPage";
 import NoticesPage from "@/pages/NoticesPage";
 import ChatbotPage from "@/pages/ChatbotPage";
 import QuizPage from "@/pages/QuizPage";
+import NotesPage from "@/pages/NotesPage";
 import AuthPage from "@/pages/AuthPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
