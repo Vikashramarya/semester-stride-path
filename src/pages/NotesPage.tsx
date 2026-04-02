@@ -4,14 +4,115 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, StickyNote, BookOpen } from "lucide-react";
-import { useState } from "react";
+import { Plus, X, StickyNote, BookOpen, Upload, FileText, Trash2, Eye, User, Clock } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+interface UploadedNote {
+  id: string;
+  user_id: string;
+  file_name: string;
+  file_path: string;
+  subject: string;
+  unit_name: string;
+  uploaded_by_name: string;
+  created_at: string;
+}
 
 export default function NotesPage() {
   const { semester, userNotes, addNote, removeNote } = useProgress();
+  const { user } = useAuth();
   const semData = getSemester(semester);
   const subjects = semData?.subjects.filter(s => !s.isLab) || [];
+
   const [newNote, setNewNote] = useState<Record<string, string>>({});
+  const [uploads, setUploads] = useState<UploadedNote[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState(subjects[0]?.name || "");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetchUploads();
+  }, []);
+
+  useEffect(() => {
+    if (subjects.length > 0 && !selectedSubject) {
+      setSelectedSubject(subjects[0].name);
+    }
+  }, [subjects]);
+
+  const fetchUploads = async () => {
+    const { data } = await supabase
+      .from("uploaded_notes")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) setUploads(data);
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    const allowed = [".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx"];
+    const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+    if (!allowed.includes(ext)) {
+      toast({ title: "Allowed: PDF, JPG, PNG, DOC, DOCX", variant: "destructive" });
+      return;
+    }
+
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: "File too large (max 20MB)", variant: "destructive" });
+      return;
+    }
+
+    setUploading(true);
+    const filePath = `${user.id}/notes/${Date.now()}_${file.name}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("student-uploads")
+      .upload(filePath, file);
+
+    if (uploadError) {
+      toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" });
+      setUploading(false);
+      return;
+    }
+
+    const displayName = user.user_metadata?.display_name || "Anonymous";
+
+    const { error: dbError } = await supabase.from("uploaded_notes").insert({
+      user_id: user.id,
+      file_name: file.name,
+      file_path: filePath,
+      subject: selectedSubject,
+      uploaded_by_name: displayName,
+    });
+
+    if (dbError) {
+      toast({ title: "Failed to save record", variant: "destructive" });
+    } else {
+      toast({ title: "Notes uploaded successfully!" });
+      fetchUploads();
+    }
+
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleDelete = async (upload: UploadedNote) => {
+    await supabase.storage.from("student-uploads").remove([upload.file_path]);
+    await supabase.from("uploaded_notes").delete().eq("id", upload.id);
+    toast({ title: "Deleted successfully" });
+    fetchUploads();
+  };
+
+  const getFileUrl = (filePath: string) => {
+    const { data } = supabase.storage.from("student-uploads").getPublicUrl(filePath);
+    return data.publicUrl;
+  };
 
   const handleAddNote = (unitId: string) => {
     const note = newNote[unitId]?.trim();
@@ -33,6 +134,100 @@ export default function NotesPage() {
         </div>
       </div>
 
+      {/* Upload Section */}
+      {user && (
+        <Card className="shadow-sm border-dashed border-2 animate-fade-in-up">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Upload className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Share Your Notes</h3>
+                <p className="text-xs text-muted-foreground">Upload study notes to help fellow students (PDF, DOC, images)</p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Select subject" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subjects.map(s => (
+                    <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex-1">
+                <Input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  onChange={handleUpload}
+                  disabled={uploading}
+                  className="cursor-pointer"
+                />
+              </div>
+              {uploading && <p className="text-xs text-muted-foreground self-center">Uploading...</p>}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Community Uploads */}
+      {uploads.length > 0 && (
+        <div className="space-y-3 animate-fade-in-up">
+          <h2 className="text-lg font-semibold">Community Shared Notes</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {uploads.map((upload) => (
+              <Card key={upload.id} className="shadow-sm hover:shadow-md transition-all">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center shrink-0">
+                      <FileText className="h-5 w-5 text-accent-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{upload.file_name}</p>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                        <User className="h-3 w-3" />
+                        <span>{upload.uploaded_by_name}</span>
+                        <span>·</span>
+                        <Badge variant="outline" className="text-[10px]">{upload.subject}</Badge>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {new Date(upload.created_at).toLocaleDateString()}
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        <a
+                          href={getFileUrl(upload.file_path)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        >
+                          <Eye className="h-3 w-3" /> View
+                        </a>
+                        {user?.id === upload.user_id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(upload)}
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" /> Delete
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Text Notes by Subject */}
       {subjects.length === 0 && (
         <p className="text-muted-foreground text-center py-12">No subjects available for this semester.</p>
       )}
