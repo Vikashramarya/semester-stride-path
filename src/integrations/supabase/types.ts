@@ -134,6 +134,69 @@ export type Database = {
         }
         Relationships: []
       }
+      uploaded_notes: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          id: string
+          subject: string
+          unit_name: string | null
+          uploaded_by_name: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          id?: string
+          subject: string
+          unit_name?: string | null
+          uploaded_by_name?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          subject?: string
+          unit_name?: string | null
+          uploaded_by_name?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      uploaded_pyqs: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          id: string
+          semester: number
+          uploaded_by_name: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          id?: string
+          semester: number
+          uploaded_by_name?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          semester?: number
+          uploaded_by_name?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
