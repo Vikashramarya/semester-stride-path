@@ -20,6 +20,10 @@ import NoticesPage from "@/pages/NoticesPage";
 import ChatbotPage from "@/pages/ChatbotPage";
 import QuizPage from "@/pages/QuizPage";
 import NotesPage from "@/pages/NotesPage";
+import ImportantQuestionsPage from "@/pages/ImportantQuestionsPage";
+import BacklogPlannerPage from "@/pages/BacklogPlannerPage";
+import DoubtHubPage from "@/pages/DoubtHubPage";
+import TestSeriesPage from "@/pages/TestSeriesPage";
 import AuthPage from "@/pages/AuthPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -57,6 +61,10 @@ function ProtectedRoutes() {
           <Route path="/chatbot" element={<ChatbotPage />} />
           <Route path="/quiz" element={<QuizPage />} />
           <Route path="/notes" element={<NotesPage />} />
+          <Route path="/important-questions" element={<ImportantQuestionsPage />} />
+          <Route path="/backlog-planner" element={<BacklogPlannerPage />} />
+          <Route path="/doubt-hub" element={<DoubtHubPage />} />
+          <Route path="/test-series" element={<TestSeriesPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AppLayout>

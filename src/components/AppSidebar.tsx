@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, BookOpen, FlaskConical, User, Zap, GraduationCap, Video,
-  Timer, CalendarCheck, FileQuestion, Bell, Bot, Brain, StickyNote,
+  Timer, CalendarCheck, FileQuestion, Bell, Bot, Brain, StickyNote, Star, Flame, MessageCircle, FlaskRound,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useProgress } from "@/context/ProgressContext";
@@ -18,14 +18,18 @@ import {
 const mainNav = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Syllabus", url: "/syllabus", icon: BookOpen },
+  { title: "Important Questions", url: "/important-questions", icon: Star },
   { title: "Study Planner", url: "/planner", icon: CalendarCheck },
+  { title: "Backlog Recovery", url: "/backlog-planner", icon: Flame },
   { title: "Pomodoro Timer", url: "/pomodoro", icon: Timer },
   { title: "Lecture Videos", url: "/lectures", icon: Video },
   { title: "PYQ Papers", url: "/pyq", icon: FileQuestion },
   { title: "My Notes", url: "/notes", icon: StickyNote },
   { title: "Quick Revision", url: "/revision", icon: Zap },
+  { title: "Test Series", url: "/test-series", icon: FlaskRound },
   { title: "AI Chatbot", url: "/chatbot", icon: Bot },
   { title: "Quiz Mode", url: "/quiz", icon: Brain },
+  { title: "Doubt Hub", url: "/doubt-hub", icon: MessageCircle },
   { title: "University Notices", url: "/notices", icon: Bell },
   { title: "Profile", url: "/profile", icon: User },
 ];
