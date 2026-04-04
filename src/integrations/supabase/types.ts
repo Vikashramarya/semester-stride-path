@@ -35,6 +35,100 @@ export type Database = {
         }
         Relationships: []
       }
+      doubt_answers: {
+        Row: {
+          answer: string
+          created_at: string
+          doubt_id: string
+          id: string
+          upvotes: number
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          doubt_id: string
+          id?: string
+          upvotes?: number
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          doubt_id?: string
+          id?: string
+          upvotes?: number
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doubt_answers_doubt_id_fkey"
+            columns: ["doubt_id"]
+            isOneToOne: false
+            referencedRelation: "doubts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doubt_upvotes: {
+        Row: {
+          answer_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          answer_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          answer_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doubt_upvotes_answer_id_fkey"
+            columns: ["answer_id"]
+            isOneToOne: false
+            referencedRelation: "doubt_answers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doubts: {
+        Row: {
+          created_at: string
+          id: string
+          question: string
+          subject: string
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          question: string
+          subject: string
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question?: string
+          subject?: string
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           course: string | null
@@ -131,6 +225,45 @@ export type Database = {
           task_date?: string
           topic?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      test_results: {
+        Row: {
+          correct_answers: number
+          created_at: string
+          id: string
+          subject: string
+          test_type: string
+          time_taken_seconds: number
+          total_questions: number
+          unit_name: string | null
+          user_id: string
+          weak_topics: string[] | null
+        }
+        Insert: {
+          correct_answers: number
+          created_at?: string
+          id?: string
+          subject: string
+          test_type?: string
+          time_taken_seconds: number
+          total_questions: number
+          unit_name?: string | null
+          user_id: string
+          weak_topics?: string[] | null
+        }
+        Update: {
+          correct_answers?: number
+          created_at?: string
+          id?: string
+          subject?: string
+          test_type?: string
+          time_taken_seconds?: number
+          total_questions?: number
+          unit_name?: string | null
+          user_id?: string
+          weak_topics?: string[] | null
         }
         Relationships: []
       }
