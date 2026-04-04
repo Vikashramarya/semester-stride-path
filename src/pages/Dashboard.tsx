@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   BookOpen, Clock, AlertTriangle, ChevronRight, FlaskConical,
   TrendingUp, Video, Target, Flame, CalendarCheck, Timer, FileQuestion, CheckCircle2,
+  Star, MessageCircle, FlaskRound, Brain,
 } from "lucide-react";
 import { useMemo, useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
