@@ -281,8 +281,12 @@ export default function Dashboard() {
         {[
           { label: "Study Planner", icon: CalendarCheck, path: "/planner", desc: "Plan daily tasks", bg: "bg-primary/10", color: "text-primary" },
           { label: "Pomodoro Timer", icon: Timer, path: "/pomodoro", desc: "Focus sessions", bg: "bg-sankalp-blue-light", color: "text-sankalp-blue" },
-          { label: "Lecture Videos", icon: Video, path: "/lectures", desc: "Watch lectures", bg: "bg-sankalp-amber-light", color: "text-sankalp-amber" },
-          { label: "PYQ Papers", icon: FileQuestion, path: "/pyq", desc: "Past papers", bg: "bg-sankalp-red-light", color: "text-sankalp-red" },
+          { label: "Important Q's", icon: Star, path: "/important-questions", desc: "High probability", bg: "bg-sankalp-amber-light", color: "text-sankalp-amber" },
+          { label: "Test Series", icon: FlaskRound, path: "/test-series", desc: "Mock tests", bg: "bg-sankalp-red-light", color: "text-sankalp-red" },
+          { label: "Backlog Mode", icon: Flame, path: "/backlog-planner", desc: "Crash study plan", bg: "bg-destructive/10", color: "text-destructive" },
+          { label: "Doubt Hub", icon: MessageCircle, path: "/doubt-hub", desc: "Ask & answer", bg: "bg-sankalp-blue-light", color: "text-sankalp-blue" },
+          { label: "AI Chatbot", icon: Brain, path: "/chatbot", desc: "Study assistant", bg: "bg-primary/10", color: "text-primary" },
+          { label: "PYQ Papers", icon: FileQuestion, path: "/pyq", desc: "Past papers", bg: "bg-sankalp-amber-light", color: "text-sankalp-amber" },
         ].map((item, i) => (
           <Card
             key={item.path}
