@@ -5,7 +5,6 @@ import {
 import { NavLink } from "@/components/NavLink";
 import { useProgress } from "@/context/ProgressContext";
 import { getSemester } from "@/data/syllabus";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import sankalpLogo from "@/assets/sankalp-logo.png";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -45,18 +44,22 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2.5">
-          <img src={sankalpLogo} alt="Sankalp" className="h-9 w-9 shrink-0 rounded-xl object-contain" />
+        <div className="flex items-center gap-2.5 group">
+          <img
+            src={sankalpLogo}
+            alt="Sankalp"
+            className="h-9 w-9 shrink-0 rounded-xl object-contain transition-transform duration-300 group-hover:scale-110"
+          />
           {!collapsed && (
-            <div>
-              <span className="text-base font-bold tracking-tight">Sankalp</span>
+            <div className="animate-fade-in">
+              <span className="text-base font-bold font-display tracking-tight gradient-text">Sankalp</span>
               <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Exam Preparation</p>
             </div>
           )}
         </div>
         {!collapsed && (
           <Select value={String(semester)} onValueChange={v => setSemester(Number(v))}>
-            <SelectTrigger className="mt-3 h-9 text-sm bg-muted/50 border-0">
+            <SelectTrigger className="mt-3 h-9 text-sm glass border-0 transition-all duration-200 hover:bg-muted/60">
               <GraduationCap className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
               <SelectValue />
             </SelectTrigger>
@@ -73,15 +76,26 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider">Menu</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNav.map(item => (
-                <SidebarMenuItem key={item.title}>
+              {mainNav.map((item, index) => (
+                <SidebarMenuItem
+                  key={item.title}
+                  className="animate-fade-in-up"
+                  style={{ animationDelay: `${index * 25}ms` }}
+                >
                   <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end={item.url === "/"} className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                    <NavLink
+                      to={item.url}
+                      end={item.url === "/"}
+                      className="group/item rounded-xl transition-all duration-200 hover:bg-primary/8 hover:translate-x-0.5"
+                      activeClassName="bg-primary/12 text-primary font-medium shadow-sm"
+                    >
+                      <item.icon className="mr-2 h-4 w-4 transition-all duration-200 group-hover/item:scale-110 group-hover/item:text-primary" />
+                      {!collapsed && (
+                        <span className="transition-colors duration-200">{item.title}</span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -92,17 +106,25 @@ export function AppSidebar() {
 
         {subjects.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider">
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
               <BookOpen className="mr-1.5 h-3 w-3" />
               Subjects
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {subjects.map(sub => (
-                  <SidebarMenuItem key={sub.id}>
+                {subjects.map((sub, index) => (
+                  <SidebarMenuItem
+                    key={sub.id}
+                    className="animate-fade-in-up"
+                    style={{ animationDelay: `${(mainNav.length + index) * 25}ms` }}
+                  >
                     <SidebarMenuButton asChild>
-                      <NavLink to={`/subject/${sub.id}`} className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
-                        <span className="mr-2 h-5 w-5 shrink-0 rounded-md bg-muted flex items-center justify-center text-[9px] font-bold text-muted-foreground">
+                      <NavLink
+                        to={`/subject/${sub.id}`}
+                        className="group/item rounded-xl transition-all duration-200 hover:bg-primary/8 hover:translate-x-0.5"
+                        activeClassName="bg-primary/12 text-primary font-medium shadow-sm"
+                      >
+                        <span className="mr-2 h-5 w-5 shrink-0 rounded-md bg-primary/10 flex items-center justify-center text-[9px] font-bold text-primary/70 transition-all duration-200 group-hover/item:bg-primary/20 group-hover/item:text-primary group-hover/item:scale-110">
                           {sub.code.slice(-2)}
                         </span>
                         {!collapsed && <span className="truncate text-[13px]">{sub.name}</span>}
@@ -117,17 +139,25 @@ export function AppSidebar() {
 
         {labs.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider">
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
               <FlaskConical className="mr-1.5 h-3 w-3" />
               Labs
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {labs.map(lab => (
-                  <SidebarMenuItem key={lab.id}>
+                {labs.map((lab, index) => (
+                  <SidebarMenuItem
+                    key={lab.id}
+                    className="animate-fade-in-up"
+                    style={{ animationDelay: `${(mainNav.length + subjects.length + index) * 25}ms` }}
+                  >
                     <SidebarMenuButton asChild>
-                      <NavLink to={`/lab/${lab.id}`} className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
-                        <FlaskConical className="mr-2 h-4 w-4 shrink-0" />
+                      <NavLink
+                        to={`/lab/${lab.id}`}
+                        className="group/item rounded-xl transition-all duration-200 hover:bg-primary/8 hover:translate-x-0.5"
+                        activeClassName="bg-primary/12 text-primary font-medium shadow-sm"
+                      >
+                        <FlaskConical className="mr-2 h-4 w-4 shrink-0 transition-all duration-200 group-hover/item:scale-110 group-hover/item:text-primary" />
                         {!collapsed && <span className="truncate text-[13px]">{lab.name}</span>}
                       </NavLink>
                     </SidebarMenuButton>
@@ -139,17 +169,19 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-3 border-t">
+      <SidebarFooter className="p-3 border-t border-border/50">
         <div className="flex items-center justify-between">
           {!collapsed && (
-            <div className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-                <GraduationCap className="h-3 w-3 text-primary" />
+            <div className="flex items-center gap-2 animate-fade-in">
+              <div className="h-7 w-7 rounded-full sankalp-gradient flex items-center justify-center">
+                <GraduationCap className="h-3.5 w-3.5 text-primary-foreground" />
               </div>
-              <span className="text-xs text-muted-foreground">Sem {semester}</span>
+              <div>
+                <span className="text-xs font-medium">Sem {semester}</span>
+                <p className="text-[9px] text-muted-foreground">B.Tech CSE</p>
+              </div>
             </div>
           )}
-          <ThemeToggle />
         </div>
       </SidebarFooter>
     </Sidebar>
