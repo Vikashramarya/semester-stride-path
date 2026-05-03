@@ -86,17 +86,35 @@ No markdown, no extra text.`;
         body: { message: prompt, mode: "quiz" },
       });
       if (error) throw error;
-      const parsed: Question[] = JSON.parse(data.response || "[]");
-      if (parsed.length === 0) throw new Error("No questions generated");
-      setQuestions(parsed);
-      setAnswers(new Array(parsed.length).fill(null));
+
+      const raw = String(data?.response ?? data?.content ?? "");
+      // Strip markdown fences and extract the JSON array
+      const cleaned = raw.replace(/```json|```/gi, "").trim();
+      const start = cleaned.indexOf("[");
+      const end = cleaned.lastIndexOf("]");
+      if (start === -1 || end === -1) throw new Error("AI did not return a question array");
+      const jsonStr = cleaned.slice(start, end + 1);
+      const parsed: Question[] = JSON.parse(jsonStr);
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("No questions generated");
+
+      // Validate shape
+      const valid = parsed.filter(q =>
+        q && typeof q.question === "string" &&
+        Array.isArray(q.options) && q.options.length === 4 &&
+        typeof q.correct === "number" && q.correct >= 0 && q.correct <= 3
+      );
+      if (valid.length === 0) throw new Error("Generated questions were malformed");
+
+      setQuestions(valid);
+      setAnswers(new Array(valid.length).fill(null));
       setCurrentQ(0);
-      const time = parsed.length * timePerQ;
+      const time = valid.length * timePerQ;
       setTimeLeft(time);
       setTotalTime(time);
       setTestState("running");
     } catch (e: any) {
-      toast({ title: "Error generating test", description: e.message, variant: "destructive" });
+      console.error("Test generation error:", e);
+      toast({ title: "Error generating test", description: e.message || "Please try again", variant: "destructive" });
     }
     setLoading(false);
   };
