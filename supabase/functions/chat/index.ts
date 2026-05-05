@@ -102,10 +102,9 @@ OUTPUT RULES:
       });
     }
 
-    if (mode === "quiz") {
+    if (mode === "quiz" || mode === "mock_paper" || mode === "grade") {
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content || "";
-      // Provide both keys for backward compatibility (content + response)
       return new Response(JSON.stringify({ content, response: content }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
