@@ -129,39 +129,102 @@ export type Database = {
         }
         Relationships: []
       }
-      profiles: {
+      mock_test_results: {
         Row: {
-          course: string | null
+          answers: Json
           created_at: string
-          display_name: string | null
-          exam_date: string | null
+          grading: Json | null
           id: string
-          semester: number | null
-          study_goal_hours: number | null
+          scored_marks: number | null
+          sections: Json
+          subject: string
+          time_taken_seconds: number
+          total_marks: number
           updated_at: string
           user_id: string
         }
         Insert: {
-          course?: string | null
+          answers?: Json
           created_at?: string
-          display_name?: string | null
-          exam_date?: string | null
+          grading?: Json | null
           id?: string
-          semester?: number | null
-          study_goal_hours?: number | null
+          scored_marks?: number | null
+          sections: Json
+          subject: string
+          time_taken_seconds?: number
+          total_marks?: number
           updated_at?: string
           user_id: string
         }
         Update: {
+          answers?: Json
+          created_at?: string
+          grading?: Json | null
+          id?: string
+          scored_marks?: number | null
+          sections?: Json
+          subject?: string
+          time_taken_seconds?: number
+          total_marks?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          age: number | null
+          branch: string | null
+          college_name: string | null
+          course: string | null
+          created_at: string
+          display_name: string | null
+          exam_date: string | null
+          gender: string | null
+          id: string
+          onboarding_completed: boolean
+          semester: number | null
+          specialization: string | null
+          study_goal_hours: number | null
+          updated_at: string
+          user_id: string
+          year: number | null
+        }
+        Insert: {
+          age?: number | null
+          branch?: string | null
+          college_name?: string | null
           course?: string | null
           created_at?: string
           display_name?: string | null
           exam_date?: string | null
+          gender?: string | null
           id?: string
+          onboarding_completed?: boolean
           semester?: number | null
+          specialization?: string | null
+          study_goal_hours?: number | null
+          updated_at?: string
+          user_id: string
+          year?: number | null
+        }
+        Update: {
+          age?: number | null
+          branch?: string | null
+          college_name?: string | null
+          course?: string | null
+          created_at?: string
+          display_name?: string | null
+          exam_date?: string | null
+          gender?: string | null
+          id?: string
+          onboarding_completed?: boolean
+          semester?: number | null
+          specialization?: string | null
           study_goal_hours?: number | null
           updated_at?: string
           user_id?: string
+          year?: number | null
         }
         Relationships: []
       }
