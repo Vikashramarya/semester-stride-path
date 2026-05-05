@@ -25,15 +25,26 @@ import BacklogPlannerPage from "@/pages/BacklogPlannerPage";
 import DoubtHubPage from "@/pages/DoubtHubPage";
 import TestSeriesPage from "@/pages/TestSeriesPage";
 import AuthPage from "@/pages/AuthPage";
+import OnboardingPage from "@/pages/OnboardingPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
 
 function ProtectedRoutes() {
   const { user, loading } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    if (!user) { setProfileLoaded(true); return; }
+    supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => { setProfile(data); setProfileLoaded(true); });
+  }, [user]);
+
+  if (loading || (user && !profileLoaded)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -42,6 +53,13 @@ function ProtectedRoutes() {
   }
 
   if (!user) return <Navigate to="/auth" replace />;
+
+  if (!profile?.onboarding_completed) {
+    return <OnboardingPage initial={profile} onComplete={() => {
+      supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle()
+        .then(({ data }) => setProfile(data));
+    }} />;
+  }
 
   return (
     <ProgressProvider>

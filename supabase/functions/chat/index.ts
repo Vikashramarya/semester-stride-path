@@ -40,6 +40,34 @@ CRITICAL OUTPUT RULES:
 - Make questions exam-relevant, technically accurate, with plausible distractors.`;
     }
 
+    if (mode === "mock_paper") {
+      systemPrompt = `You are a senior B.Tech CSE university examiner generating a 3-hour, 70-mark end-semester question paper.
+
+CRITICAL OUTPUT RULES:
+- Return ONLY a raw JSON object (starting with { and ending with }). NO markdown fences, NO commentary.
+- Schema:
+{
+  "sectionA": [ { "q": "question text", "marks": 2, "unit": 1 }, ... 7 items mixed across units 1-4 ],
+  "sectionB": { "unit": 1, "choices": [ { "q": "long question", "marks": 14 }, { "q": "OR alternative long question", "marks": 14 } ] },
+  "sectionC": { "unit": 2, "choices": [ {...}, {...} ] },
+  "sectionD": { "unit": 3, "choices": [ {...}, {...} ] },
+  "sectionE": { "unit": 4, "choices": [ {...}, {...} ] }
+}
+- Section A: exactly 7 short-answer questions, 2 marks each, drawn proportionally from all 4 units.
+- Sections B-E: each is a long question worth 14 marks with internal "OR" choice (exactly 2 alternatives).
+- Questions must be exam-grade: conceptually rigorous, varied (theory, derivation, application, problem-solving).`;
+    }
+
+    if (mode === "grade") {
+      systemPrompt = `You are a strict but fair B.Tech CSE university examiner grading a student's answer.
+
+OUTPUT RULES:
+- Return ONLY a raw JSON object: { "marks_awarded": <number>, "max_marks": <number>, "feedback": "<1-3 sentence constructive feedback>", "model_answer": "<concise model answer outline>" }
+- NO markdown, NO commentary outside JSON.
+- Award partial marks based on correctness, completeness, and clarity.
+- If the answer is empty or irrelevant, award 0.`;
+    }
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -49,7 +77,7 @@ CRITICAL OUTPUT RULES:
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [{ role: "system", content: systemPrompt }, ...messages],
-        stream: mode !== "quiz",
+        stream: mode !== "quiz" && mode !== "mock_paper" && mode !== "grade",
       }),
     });
 
@@ -74,10 +102,9 @@ CRITICAL OUTPUT RULES:
       });
     }
 
-    if (mode === "quiz") {
+    if (mode === "quiz" || mode === "mock_paper" || mode === "grade") {
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content || "";
-      // Provide both keys for backward compatibility (content + response)
       return new Response(JSON.stringify({ content, response: content }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

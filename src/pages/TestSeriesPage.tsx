@@ -7,30 +7,39 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  FlaskConical, Clock, Target, CheckCircle2, XCircle, Loader2, BarChart3, Trophy, Zap,
-  ArrowRight, RotateCcw,
+  FlaskConical, Clock, Loader2, Trophy, ArrowRight, RotateCcw, FileText, AlertTriangle,
+  CheckCircle2, GraduationCap,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import {
-  BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip,
-} from "recharts";
+import OnboardingPage from "./OnboardingPage";
 
-interface Question {
-  question: string;
-  options: string[];
-  correct: number;
-  explanation: string;
-  topic: string;
+interface ShortQ { q: string; marks: number; unit: number; }
+interface LongQ { q: string; marks: number; }
+interface SectionLong { unit: number; choices: LongQ[]; }
+interface Paper {
+  sectionA: ShortQ[];
+  sectionB: SectionLong;
+  sectionC: SectionLong;
+  sectionD: SectionLong;
+  sectionE: SectionLong;
+}
+interface GradeResult {
+  marks_awarded: number;
+  max_marks: number;
+  feedback: string;
+  model_answer: string;
 }
 
-type TestLevel = "basic" | "advanced";
-type TestState = "setup" | "running" | "results";
+type Stage = "setup" | "cover" | "running" | "grading" | "results";
 
-const CHART_COLORS = ["hsl(152, 55%, 42%)", "hsl(0, 72%, 51%)"];
+const TOTAL_TIME = 3 * 60 * 60; // 3 hours
+const TOTAL_MARKS = 70;
 
 export default function TestSeriesPage() {
   const { user } = useAuth();
@@ -38,413 +47,481 @@ export default function TestSeriesPage() {
   const semData = getSemester(semester);
   const subjects = semData?.subjects.filter(s => !s.isLab) || [];
 
-  const [testState, setTestState] = useState<TestState>("setup");
-  const [testLevel, setTestLevel] = useState<TestLevel>("basic");
+  const [stage, setStage] = useState<Stage>("setup");
+  const [profile, setProfile] = useState<any>(null);
   const [selectedSubject, setSelectedSubject] = useState("");
-  const [selectedUnit, setSelectedUnit] = useState("all");
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentQ, setCurrentQ] = useState(0);
-  const [answers, setAnswers] = useState<(number | null)[]>([]);
+  const [paper, setPaper] = useState<Paper | null>(null);
   const [loading, setLoading] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [totalTime, setTotalTime] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(TOTAL_TIME);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const [pastResults, setPastResults] = useState<any[]>([]);
 
-  const currentSubject = subjects.find(s => s.id === selectedSubject);
-  const units = currentSubject?.units || [];
+  // Answers: keyed by section+index. For sections B-E also track choice index (0 or 1).
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [longChoice, setLongChoice] = useState<Record<"B" | "C" | "D" | "E", 0 | 1>>({ B: 0, C: 0, D: 0, E: 0 });
+  const [grades, setGrades] = useState<Record<string, GradeResult>>({});
+  const [scoredMarks, setScoredMarks] = useState<number>(0);
 
-  // Fetch past results
   useEffect(() => {
     if (!user) return;
-    supabase.from("test_results").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10)
+    supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => setProfile(data));
+    supabase.from("mock_test_results").select("*").eq("user_id", user.id)
+      .order("created_at", { ascending: false }).limit(10)
       .then(({ data }) => setPastResults(data || []));
-  }, [user, testState]);
+  }, [user, stage]);
 
-  const generateQuestions = async () => {
+  const generatePaper = async () => {
     if (!selectedSubject) return;
-    setLoading(true);
     const sub = subjects.find(s => s.id === selectedSubject);
-    if (!sub) return;
+    if (!sub || sub.units.length < 4) {
+      toast({ title: "Need 4 units", description: "This subject doesn't have 4 units defined.", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    const unitsInfo = sub.units.slice(0, 4).map((u, i) =>
+      `Unit ${i + 1} - ${u.name}: ${u.topics.map(t => t.name).join(", ")}`
+    ).join("\n");
 
-    const unitInfo = selectedUnit === "all"
-      ? sub.units.map(u => `${u.name}: ${u.topics.map(t => t.name).join(", ")}`).join("\n")
-      : (() => { const u = sub.units.find(x => x.id === selectedUnit); return u ? `${u.name}: ${u.topics.map(t => t.name).join(", ")}` : ""; })();
+    const prompt = `Generate a 3-hour, 70-mark B.Tech end-semester question paper for "${sub.name}".
+Units:
+${unitsInfo}
 
-    const numQ = testLevel === "basic" ? 10 : 20;
-    const difficulty = testLevel === "basic" ? "easy to medium" : "medium to hard, include tricky options";
-    const timePerQ = testLevel === "basic" ? 60 : 90; // seconds
-
-    const prompt = `Generate exactly ${numQ} MCQ questions for a B.Tech CSE exam on "${sub.name}" (${selectedUnit === "all" ? "full syllabus" : "specific unit"}).
-Topics: ${unitInfo}
-Difficulty: ${difficulty}
-Return ONLY a JSON array of objects with: question, options (array of 4 strings), correct (0-3 index), explanation (short), topic (which topic it tests).
-No markdown, no extra text.`;
+Follow the strict JSON schema. Section A = 7 short questions (2 marks each, mixed across units 1-4). Sections B/C/D/E = one 14-mark long question each from units 1/2/3/4 respectively, each with 2 OR-choice alternatives.`;
 
     try {
       const { data, error } = await supabase.functions.invoke("chat", {
-        body: { message: prompt, mode: "quiz" },
+        body: { message: prompt, mode: "mock_paper" },
       });
       if (error) throw error;
-
-      const raw = String(data?.response ?? data?.content ?? "");
-      // Strip markdown fences and extract the JSON array
+      const raw = String(data?.content ?? data?.response ?? "");
       const cleaned = raw.replace(/```json|```/gi, "").trim();
-      const start = cleaned.indexOf("[");
-      const end = cleaned.lastIndexOf("]");
-      if (start === -1 || end === -1) throw new Error("AI did not return a question array");
-      const jsonStr = cleaned.slice(start, end + 1);
-      const parsed: Question[] = JSON.parse(jsonStr);
-      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("No questions generated");
-
-      // Validate shape
-      const valid = parsed.filter(q =>
-        q && typeof q.question === "string" &&
-        Array.isArray(q.options) && q.options.length === 4 &&
-        typeof q.correct === "number" && q.correct >= 0 && q.correct <= 3
-      );
-      if (valid.length === 0) throw new Error("Generated questions were malformed");
-
-      setQuestions(valid);
-      setAnswers(new Array(valid.length).fill(null));
-      setCurrentQ(0);
-      const time = valid.length * timePerQ;
-      setTimeLeft(time);
-      setTotalTime(time);
-      setTestState("running");
+      const start = cleaned.indexOf("{");
+      const end = cleaned.lastIndexOf("}");
+      if (start === -1 || end === -1) throw new Error("Invalid paper format");
+      const parsed: Paper = JSON.parse(cleaned.slice(start, end + 1));
+      if (!parsed.sectionA || !parsed.sectionB || !parsed.sectionC || !parsed.sectionD || !parsed.sectionE) {
+        throw new Error("Paper is missing sections");
+      }
+      setPaper(parsed);
+      setAnswers({});
+      setGrades({});
+      setLongChoice({ B: 0, C: 0, D: 0, E: 0 });
+      setTimeLeft(TOTAL_TIME);
+      setStage("cover");
     } catch (e: any) {
-      console.error("Test generation error:", e);
-      toast({ title: "Error generating test", description: e.message || "Please try again", variant: "destructive" });
+      console.error(e);
+      toast({ title: "Could not generate paper", description: e.message, variant: "destructive" });
     }
     setLoading(false);
   };
 
   // Timer
   useEffect(() => {
-    if (testState !== "running") return;
+    if (stage !== "running") return;
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
-        if (prev <= 1) { clearInterval(timerRef.current); finishTest(); return 0; }
+        if (prev <= 1) { clearInterval(timerRef.current); submitPaper(); return 0; }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [testState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage]);
 
-  const selectAnswer = (optionIndex: number) => {
-    setAnswers(prev => { const n = [...prev]; n[currentQ] = optionIndex; return n; });
+  const formatTime = (s: number) => {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return `${h}:${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
 
-  const finishTest = useCallback(async () => {
-    clearInterval(timerRef.current);
-    setTestState("results");
-    if (!user) return;
-    const correct = questions.reduce((a, q, i) => a + (answers[i] === q.correct ? 1 : 0), 0);
-    const weakTopics = [...new Set(questions.filter((q, i) => answers[i] !== q.correct).map(q => q.topic))];
-    const sub = subjects.find(s => s.id === selectedSubject);
+  const updateAnswer = (key: string, value: string) =>
+    setAnswers(prev => ({ ...prev, [key]: value }));
 
-    await supabase.from("test_results").insert({
-      user_id: user.id,
-      test_type: testLevel,
-      subject: sub?.name || selectedSubject,
-      unit_name: selectedUnit === "all" ? null : units.find(u => u.id === selectedUnit)?.name,
-      total_questions: questions.length,
-      correct_answers: correct,
-      time_taken_seconds: totalTime - timeLeft,
-      weak_topics: weakTopics,
+  const answeredCount = useMemo(() => {
+    if (!paper) return 0;
+    let n = 0;
+    paper.sectionA.forEach((_, i) => { if ((answers[`A-${i}`] || "").trim()) n++; });
+    (["B", "C", "D", "E"] as const).forEach(sec => {
+      const ci = longChoice[sec];
+      if ((answers[`${sec}-${ci}`] || "").trim()) n++;
     });
-  }, [questions, answers, user, selectedSubject, testLevel, selectedUnit, totalTime, timeLeft, subjects, units]);
+    return n;
+  }, [paper, answers, longChoice]);
 
-  const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+  const totalQuestions = 7 + 4;
 
-  const results = useMemo(() => {
-    const correct = questions.reduce((a, q, i) => a + (answers[i] === q.correct ? 1 : 0), 0);
-    const accuracy = questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0;
-    const weakTopics = [...new Set(questions.filter((q, i) => answers[i] !== q.correct).map(q => q.topic))];
-    const topicStats = questions.reduce((acc: Record<string, { correct: number; total: number }>, q, i) => {
-      if (!acc[q.topic]) acc[q.topic] = { correct: 0, total: 0 };
-      acc[q.topic].total++;
-      if (answers[i] === q.correct) acc[q.topic].correct++;
-      return acc;
-    }, {});
-    return { correct, accuracy, weakTopics, topicStats };
-  }, [questions, answers]);
+  const submitPaper = useCallback(async () => {
+    if (!paper || !user) return;
+    clearInterval(timerRef.current);
+    setStage("grading");
 
-  // SETUP
-  if (testState === "setup") {
+    const items: { key: string; q: string; marks: number; ans: string }[] = [];
+    paper.sectionA.forEach((q, i) => items.push({ key: `A-${i}`, q: q.q, marks: q.marks, ans: answers[`A-${i}`] || "" }));
+    (["B", "C", "D", "E"] as const).forEach(sec => {
+      const ci = longChoice[sec];
+      const sectionData = paper[`section${sec}` as "sectionB"];
+      const q = sectionData.choices[ci];
+      items.push({ key: `${sec}-${ci}`, q: q.q, marks: q.marks, ans: answers[`${sec}-${ci}`] || "" });
+    });
+
+    const newGrades: Record<string, GradeResult> = {};
+    let total = 0;
+
+    // Sequential to avoid rate limits
+    for (const it of items) {
+      try {
+        const prompt = `Question (${it.marks} marks): ${it.q}\n\nStudent answer: ${it.ans || "(no answer provided)"}`;
+        const { data, error } = await supabase.functions.invoke("chat", {
+          body: { message: prompt, mode: "grade" },
+        });
+        if (error) throw error;
+        const raw = String(data?.content ?? data?.response ?? "");
+        const cleaned = raw.replace(/```json|```/gi, "").trim();
+        const s = cleaned.indexOf("{"); const e = cleaned.lastIndexOf("}");
+        const g: GradeResult = JSON.parse(cleaned.slice(s, e + 1));
+        const awarded = Math.max(0, Math.min(it.marks, Number(g.marks_awarded) || 0));
+        newGrades[it.key] = { ...g, marks_awarded: awarded, max_marks: it.marks };
+        total += awarded;
+        setGrades({ ...newGrades });
+        setScoredMarks(total);
+      } catch (err) {
+        console.error("grade error", err);
+        newGrades[it.key] = { marks_awarded: 0, max_marks: it.marks, feedback: "Could not grade automatically.", model_answer: "" };
+      }
+    }
+
+    const sub = subjects.find(s => s.id === selectedSubject);
+    await supabase.from("mock_test_results").insert({
+      user_id: user.id,
+      subject: sub?.name || selectedSubject,
+      sections: paper as any,
+      answers: { ...answers, _longChoice: longChoice } as any,
+      grading: newGrades as any,
+      total_marks: TOTAL_MARKS,
+      scored_marks: total,
+      time_taken_seconds: TOTAL_TIME - timeLeft,
+    });
+
+    setStage("results");
+  }, [paper, user, answers, longChoice, selectedSubject, subjects, timeLeft]);
+
+  // ============== SETUP ==============
+  if (stage === "setup") {
     return (
-      <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
+      <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto space-y-6 animate-fade-in-up">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <FlaskConical className="h-5 w-5 text-primary" />
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center shadow-lg">
+            <FlaskConical className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Test Series</h1>
-            <p className="text-sm text-muted-foreground">AI-generated tests to assess your preparation</p>
+            <h1 className="text-2xl font-bold">Full Mock Test</h1>
+            <p className="text-sm text-muted-foreground">3 hours · 70 marks · University format</p>
           </div>
         </div>
 
-        {/* Level selection */}
-        <div className="grid sm:grid-cols-2 gap-3">
-          {([
-            { level: "basic" as TestLevel, title: "Basic Test", desc: "Unit-wise · Easy to Medium · 10 Questions", icon: Target, color: "text-primary", bg: "bg-primary/10" },
-            { level: "advanced" as TestLevel, title: "Advanced Test", desc: "Full syllabus · Hard · 20 Questions · Timed", icon: Zap, color: "text-sankalp-amber", bg: "bg-sankalp-amber-light" },
-          ]).map(t => (
-            <Card
-              key={t.level}
-              className={`border-2 cursor-pointer transition-all hover:shadow-md ${testLevel === t.level ? "border-primary" : "border-transparent"}`}
-              onClick={() => setTestLevel(t.level)}
-            >
-              <CardContent className="p-5">
-                <div className={`p-2 rounded-lg ${t.bg} ${t.color} w-fit mb-3`}>
-                  <t.icon className="h-5 w-5" />
-                </div>
-                <p className="font-semibold">{t.title}</p>
-                <p className="text-xs text-muted-foreground mt-1">{t.desc}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card className="border-0 shadow-md glass">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" /> Paper Pattern
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex justify-between"><span><b>Section A</b> · Compulsory · 7 questions × 2 marks</span><span className="font-mono">14 M</span></div>
+            <div className="flex justify-between"><span><b>Section B</b> · Unit 1 · with internal OR choice</span><span className="font-mono">14 M</span></div>
+            <div className="flex justify-between"><span><b>Section C</b> · Unit 2 · with internal OR choice</span><span className="font-mono">14 M</span></div>
+            <div className="flex justify-between"><span><b>Section D</b> · Unit 3 · with internal OR choice</span><span className="font-mono">14 M</span></div>
+            <div className="flex justify-between"><span><b>Section E</b> · Unit 4 · with internal OR choice</span><span className="font-mono">14 M</span></div>
+            <Separator className="my-2" />
+            <div className="flex justify-between font-semibold"><span>Total</span><span className="font-mono">70 Marks · 3 Hours</span></div>
+          </CardContent>
+        </Card>
 
-        {/* Subject & unit selection */}
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-md">
           <CardContent className="p-4 space-y-4">
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Subject</label>
-                <Select value={selectedSubject} onValueChange={v => { setSelectedSubject(v); setSelectedUnit("all"); }}>
-                  <SelectTrigger className="h-10"><SelectValue placeholder="Choose subject" /></SelectTrigger>
-                  <SelectContent>
-                    {subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              {testLevel === "basic" && (
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">Unit (optional)</label>
-                  <Select value={selectedUnit} onValueChange={setSelectedUnit}>
-                    <SelectTrigger className="h-10"><SelectValue placeholder="All units" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Units</SelectItem>
-                      {units.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Select Subject</label>
+              <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                <SelectTrigger className="h-10"><SelectValue placeholder="Choose a subject" /></SelectTrigger>
+                <SelectContent>
+                  {subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
-            <Button onClick={generateQuestions} disabled={!selectedSubject || loading} className="w-full">
+            <Button onClick={generatePaper} disabled={!selectedSubject || loading} className="w-full h-11 bg-gradient-to-r from-indigo-500 to-cyan-500 text-white">
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FlaskConical className="h-4 w-4 mr-2" />}
-              Generate Test
+              Generate Paper
             </Button>
           </CardContent>
         </Card>
 
-        {/* Past results */}
         {pastResults.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-primary" /> Recent Results
-            </h2>
-            <div className="grid gap-2">
-              {pastResults.map(r => (
-                <Card key={r.id} className="border-0 shadow-sm">
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <div className={`p-1.5 rounded-lg ${r.test_type === "advanced" ? "bg-sankalp-amber-light text-sankalp-amber" : "bg-primary/10 text-primary"}`}>
-                      {r.test_type === "advanced" ? <Zap className="h-3.5 w-3.5" /> : <Target className="h-3.5 w-3.5" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{r.subject}</p>
-                      <p className="text-[10px] text-muted-foreground">{new Date(r.created_at).toLocaleDateString("en-IN")}</p>
-                    </div>
-                    <Badge variant="secondary" className="text-xs">
-                      {r.correct_answers}/{r.total_questions} · {Math.round((r.correct_answers / r.total_questions) * 100)}%
-                    </Badge>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold">Recent Mock Tests</h2>
+            {pastResults.map(r => (
+              <Card key={r.id} className="border-0 shadow-sm">
+                <CardContent className="p-3 flex items-center gap-3">
+                  <Trophy className="h-4 w-4 text-amber-500" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{r.subject}</p>
+                    <p className="text-[10px] text-muted-foreground">{new Date(r.created_at).toLocaleString("en-IN")}</p>
+                  </div>
+                  <Badge variant="secondary">{Number(r.scored_marks ?? 0).toFixed(1)} / {r.total_marks}</Badge>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </div>
     );
   }
 
-  // RUNNING
-  if (testState === "running") {
-    const q = questions[currentQ];
-    const isLast = currentQ === questions.length - 1;
-    const answered = answers.filter(a => a !== null).length;
-
+  // ============== COVER SHEET ==============
+  if (stage === "cover") {
     return (
-      <div className="p-4 md:p-6 lg:p-8 max-w-3xl mx-auto space-y-4">
-        {/* Timer bar */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="text-xs">Q {currentQ + 1}/{questions.length}</Badge>
-            <Badge variant="secondary" className="text-xs">{answered} answered</Badge>
-          </div>
-          <div className={`flex items-center gap-1.5 text-sm font-mono font-bold ${timeLeft < 60 ? "text-destructive animate-pulse" : "text-muted-foreground"}`}>
-            <Clock className="h-4 w-4" /> {formatTime(timeLeft)}
-          </div>
-        </div>
-        <Progress value={(answered / questions.length) * 100} className="h-1.5" />
+      <OnboardingPage
+        initial={profile}
+        isCoverSheet
+        onComplete={() => {
+          supabase.from("profiles").select("*").eq("user_id", user!.id).maybeSingle()
+            .then(({ data }) => setProfile(data));
+          setStage("running");
+        }}
+      />
+    );
+  }
 
-        {/* Question */}
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-5 space-y-4">
-            <p className="font-medium text-base leading-relaxed">{q?.question}</p>
-            <div className="space-y-2">
-              {q?.options.map((opt, i) => {
-                const selected = answers[currentQ] === i;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => selectAnswer(i)}
-                    className={`w-full text-left p-3 rounded-lg border-2 transition-all text-sm ${
-                      selected ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30 hover:bg-muted/50"
-                    }`}
-                  >
-                    <span className="font-medium mr-2">{String.fromCharCode(65 + i)}.</span>
-                    {opt}
-                  </button>
-                );
-              })}
+  // ============== RUNNING ==============
+  if (stage === "running" && paper) {
+    const sub = subjects.find(s => s.id === selectedSubject);
+    return (
+      <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto space-y-4 animate-fade-in-up">
+        {/* Sticky header */}
+        <div className="sticky top-0 z-10 -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-3 bg-background/80 backdrop-blur-md border-b">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <GraduationCap className="h-5 w-5 text-primary shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold truncate">{sub?.name}</p>
+                <p className="text-[10px] text-muted-foreground">{profile?.college_name} · {profile?.display_name}</p>
+              </div>
             </div>
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary" className="text-xs">{answeredCount}/{totalQuestions} answered</Badge>
+              <div className={`flex items-center gap-1.5 text-sm font-mono font-bold ${timeLeft < 600 ? "text-destructive animate-pulse" : ""}`}>
+                <Clock className="h-4 w-4" /> {formatTime(timeLeft)}
+              </div>
+            </div>
+          </div>
+          <Progress value={(answeredCount / totalQuestions) * 100} className="h-1 mt-2" />
+        </div>
+
+        {/* Paper meta */}
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 text-center space-y-1">
+            <p className="font-bold uppercase tracking-wide">{sub?.name} — End Semester Examination</p>
+            <p className="text-xs text-muted-foreground">Time: 3 Hours · Maximum Marks: 70</p>
+            <p className="text-[11px] text-muted-foreground italic">All sections are compulsory. Section A has no choice. Sections B–E have internal choices.</p>
           </CardContent>
         </Card>
 
-        {/* Navigation */}
-        <div className="flex items-center justify-between">
-          <Button variant="outline" size="sm" onClick={() => setCurrentQ(p => Math.max(0, p - 1))} disabled={currentQ === 0}>
-            Previous
+        {/* Section A */}
+        <SectionBlock title="Section A" subtitle="Compulsory · Answer all 7 questions · 2 marks each (Mixed Units)">
+          {paper.sectionA.map((q, i) => (
+            <QuestionItem
+              key={`A-${i}`}
+              label={`Q${i + 1}.`}
+              question={q.q}
+              marks={q.marks}
+              meta={`Unit ${q.unit}`}
+              value={answers[`A-${i}`] || ""}
+              onChange={v => updateAnswer(`A-${i}`, v)}
+              rows={2}
+            />
+          ))}
+        </SectionBlock>
+
+        {/* Sections B-E */}
+        {(["B", "C", "D", "E"] as const).map((sec, idx) => {
+          const data = paper[`section${sec}` as "sectionB"];
+          const ci = longChoice[sec];
+          return (
+            <SectionBlock
+              key={sec}
+              title={`Section ${sec}`}
+              subtitle={`Unit ${data.unit} · Attempt any ONE · 14 marks`}
+            >
+              <div className="flex gap-2 mb-3">
+                {data.choices.map((_, i) => (
+                  <Button
+                    key={i}
+                    size="sm"
+                    variant={ci === i ? "default" : "outline"}
+                    onClick={() => setLongChoice(prev => ({ ...prev, [sec]: i as 0 | 1 }))}
+                  >
+                    {i === 0 ? "Question (a)" : "OR — Question (b)"}
+                  </Button>
+                ))}
+              </div>
+              <QuestionItem
+                label={`Q${8 + idx}.`}
+                question={data.choices[ci]?.q || ""}
+                marks={14}
+                value={answers[`${sec}-${ci}`] || ""}
+                onChange={v => updateAnswer(`${sec}-${ci}`, v)}
+                rows={8}
+              />
+            </SectionBlock>
+          );
+        })}
+
+        <div className="flex justify-end gap-2 sticky bottom-4">
+          <Button
+            size="lg"
+            className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white shadow-xl"
+            onClick={() => {
+              if (answeredCount < totalQuestions && !confirm(`You've answered ${answeredCount}/${totalQuestions}. Submit anyway?`)) return;
+              submitPaper();
+            }}
+          >
+            Submit Paper <ArrowRight className="h-4 w-4 ml-1" />
           </Button>
-          <div className="flex gap-1">
-            {questions.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentQ(i)}
-                className={`h-7 w-7 rounded-md text-[10px] font-bold transition-colors ${
-                  i === currentQ ? "bg-primary text-primary-foreground" :
-                  answers[i] !== null ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-          </div>
-          {isLast ? (
-            <Button size="sm" onClick={finishTest}>Submit Test</Button>
-          ) : (
-            <Button size="sm" onClick={() => setCurrentQ(p => p + 1)}>
-              Next <ArrowRight className="h-3 w-3 ml-1" />
-            </Button>
-          )}
         </div>
       </div>
     );
   }
 
-  // RESULTS
-  const chartData = Object.entries(results.topicStats).map(([topic, s]) => ({
-    topic: topic.length > 20 ? topic.slice(0, 18) + "…" : topic,
-    correct: s.correct,
-    wrong: s.total - s.correct,
-  }));
-
-  return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
-      {/* Score header */}
-      <div className="text-center space-y-2">
-        <Trophy className={`h-12 w-12 mx-auto ${results.accuracy >= 70 ? "text-sankalp-amber" : "text-muted-foreground"}`} />
-        <h1 className="text-3xl font-bold">{results.accuracy}%</h1>
-        <p className="text-sm text-muted-foreground">
-          {results.correct}/{questions.length} correct · {formatTime(totalTime - timeLeft)} taken
-        </p>
+  // ============== GRADING ==============
+  if (stage === "grading") {
+    const graded = Object.keys(grades).length;
+    return (
+      <div className="p-8 max-w-md mx-auto text-center space-y-4 animate-fade-in-up">
+        <div className="mx-auto h-16 w-16 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center animate-pulse-glow">
+          <Loader2 className="h-8 w-8 text-white animate-spin" />
+        </div>
+        <h2 className="text-xl font-bold">Evaluating your paper</h2>
+        <p className="text-sm text-muted-foreground">AI examiner is grading each answer with feedback…</p>
+        <Progress value={(graded / totalQuestions) * 100} className="h-2" />
+        <p className="text-xs text-muted-foreground">{graded} of {totalQuestions} graded · Running total: {scoredMarks.toFixed(1)} / {TOTAL_MARKS}</p>
       </div>
+    );
+  }
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Score", value: `${results.correct}/${questions.length}`, icon: Target, color: "text-primary" },
-          { label: "Accuracy", value: `${results.accuracy}%`, icon: CheckCircle2, color: results.accuracy >= 70 ? "text-primary" : "text-destructive" },
-          { label: "Weak Topics", value: results.weakTopics.length, icon: XCircle, color: "text-destructive" },
-        ].map((s, i) => (
-          <Card key={i} className="border-0 shadow-sm">
-            <CardContent className="p-4 text-center">
-              <s.icon className={`h-5 w-5 mx-auto mb-1 ${s.color}`} />
-              <p className="text-lg font-bold">{s.value}</p>
-              <p className="text-[10px] text-muted-foreground">{s.label}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+  // ============== RESULTS ==============
+  if (stage === "results" && paper) {
+    const percent = (scoredMarks / TOTAL_MARKS) * 100;
+    const grade = percent >= 75 ? "A" : percent >= 60 ? "B" : percent >= 45 ? "C" : percent >= 33 ? "D" : "F";
+    const items: { key: string; label: string; q: string; ans: string; g?: GradeResult }[] = [];
+    paper.sectionA.forEach((q, i) => items.push({ key: `A-${i}`, label: `Section A · Q${i + 1}`, q: q.q, ans: answers[`A-${i}`] || "", g: grades[`A-${i}`] }));
+    (["B", "C", "D", "E"] as const).forEach((sec, idx) => {
+      const ci = longChoice[sec];
+      const data = paper[`section${sec}` as "sectionB"];
+      items.push({ key: `${sec}-${ci}`, label: `Section ${sec} · Q${8 + idx}`, q: data.choices[ci]?.q || "", ans: answers[`${sec}-${ci}`] || "", g: grades[`${sec}-${ci}`] });
+    });
 
-      {/* Topic chart */}
-      {chartData.length > 0 && (
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Performance by Topic</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={chartData} layout="vertical">
-                <XAxis type="number" hide />
-                <YAxis dataKey="topic" type="category" width={100} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip />
-                <Bar dataKey="correct" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="wrong" stackId="a" fill="hsl(var(--destructive))" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Weak topics */}
-      {results.weakTopics.length > 0 && (
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-destructive flex items-center gap-2">
-              <XCircle className="h-4 w-4" /> Weak Topics — Focus Here
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {results.weakTopics.map(t => (
-                <Badge key={t} variant="outline" className="text-xs bg-destructive/10 text-destructive border-0">{t}</Badge>
-              ))}
+    return (
+      <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto space-y-6 animate-fade-in-up">
+        <Card className="border-0 shadow-xl glass-strong">
+          <CardContent className="p-6 text-center space-y-3">
+            <Trophy className={`h-14 w-14 mx-auto ${percent >= 60 ? "text-amber-500" : "text-muted-foreground"}`} />
+            <div>
+              <p className="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-cyan-600 bg-clip-text text-transparent">
+                {scoredMarks.toFixed(1)} / {TOTAL_MARKS}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">{percent.toFixed(1)}% · Grade {grade}</p>
+            </div>
+            <div className="flex justify-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="secondary">Time: {formatTime(TOTAL_TIME - timeLeft)}</Badge>
+              <Badge variant="secondary">{totalQuestions} questions</Badge>
             </div>
           </CardContent>
         </Card>
-      )}
 
-      {/* Review answers */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold">Answer Review</h2>
-        {questions.map((q, i) => {
-          const isCorrect = answers[i] === q.correct;
-          return (
-            <Card key={i} className={`border-0 shadow-sm ${isCorrect ? "" : "border-l-2 border-l-destructive"}`}>
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-start gap-2">
-                  {isCorrect ? <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />}
-                  <p className="text-sm font-medium">{q.question}</p>
+        <h2 className="text-lg font-semibold">Detailed Evaluation</h2>
+        {items.map(item => (
+          <Card key={item.key} className="border-0 shadow-sm">
+            <CardContent className="p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <Badge variant="outline">{item.label}</Badge>
+                {item.g && (
+                  <Badge className={item.g.marks_awarded === item.g.max_marks ? "bg-emerald-500" : item.g.marks_awarded > 0 ? "bg-amber-500" : "bg-destructive"}>
+                    {item.g.marks_awarded} / {item.g.max_marks}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm font-medium">{item.q}</p>
+              <div className="text-xs space-y-1.5 pl-3 border-l-2 border-muted">
+                <div>
+                  <span className="font-semibold text-muted-foreground">Your answer: </span>
+                  <span className="whitespace-pre-wrap">{item.ans || <em className="text-destructive">Not attempted</em>}</span>
                 </div>
-                <div className="ml-6 space-y-1">
-                  {answers[i] !== null && answers[i] !== q.correct && (
-                    <p className="text-xs text-destructive">Your answer: {q.options[answers[i]!]}</p>
-                  )}
-                  <p className="text-xs text-primary">Correct: {q.options[q.correct]}</p>
-                  <p className="text-[10px] text-muted-foreground italic">{q.explanation}</p>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+                {item.g?.model_answer && (
+                  <div>
+                    <span className="font-semibold text-primary">Model answer: </span>
+                    <span className="whitespace-pre-wrap">{item.g.model_answer}</span>
+                  </div>
+                )}
+                {item.g?.feedback && (
+                  <div className="flex gap-1.5 pt-1">
+                    {item.g.marks_awarded === item.g.max_marks
+                      ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                      : <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />}
+                    <span className="italic text-muted-foreground">{item.g.feedback}</span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        <Button onClick={() => { setStage("setup"); setPaper(null); }} className="w-full">
+          <RotateCcw className="h-4 w-4 mr-2" /> Take Another Mock Test
+        </Button>
       </div>
+    );
+  }
 
-      <Button onClick={() => setTestState("setup")} className="w-full">
-        <RotateCcw className="h-4 w-4 mr-2" /> Take Another Test
-      </Button>
+  return null;
+}
+
+function SectionBlock({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center justify-between gap-2">
+          <span>{title}</span>
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
+      </CardHeader>
+      <CardContent className="space-y-3">{children}</CardContent>
+    </Card>
+  );
+}
+
+function QuestionItem({
+  label, question, marks, meta, value, onChange, rows = 3,
+}: {
+  label: string; question: string; marks: number; meta?: string; value: string; onChange: (v: string) => void; rows?: number;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm leading-relaxed">
+          <span className="font-semibold mr-1">{label}</span>{question}
+        </p>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <Badge variant="secondary" className="text-[10px]">{marks} M</Badge>
+          {meta && <Badge variant="outline" className="text-[9px]">{meta}</Badge>}
+        </div>
+      </div>
+      <Textarea
+        rows={rows}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder="Write your answer here…"
+        className="resize-y text-sm"
+      />
     </div>
   );
 }
