@@ -77,7 +77,7 @@ OUTPUT RULES:
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [{ role: "system", content: systemPrompt }, ...messages],
-        stream: mode !== "quiz",
+        stream: mode !== "quiz" && mode !== "mock_paper" && mode !== "grade",
       }),
     });
 
