@@ -70,6 +70,56 @@ export const lectureData: SubjectLectures[] = [
       mk("cn", 4, "Computer Network Unit 4", "APVCgkqWcQ4"),
     ],
   },
+  {
+    subjectId: "de",
+    subjectName: "Digital Electronics",
+    units: [
+      mk("de", 1, "Digital Electronics Unit 1", "O0gtKDu_cJc", "PLxCzCOWd7aiGmXg4NoX6R31AsC5LeCPHe"),
+      mk("de", 2, "Digital Electronics Unit 2", "4luaoQGaEZQ", "PLgwJf8NK-2e4zRyPzO6HI9sUOR8v-80RT"),
+      mk("de", 3, "Digital Electronics Unit 3", "v0pxOfTg18Y", "PLxCzCOWd7aiGmXg4NoX6R31AsC5LeCPHe"),
+      mk("de", 4, "Digital Electronics Unit 4", "APVCgkqWcQ4"),
+    ],
+  },
+  {
+    subjectId: "cal",
+    subjectName: "Calculus and Ordinary Differential Equations",
+    units: [
+      mk("cal", 1, "Calculus and ODE Unit 1", "TH4Kd9mfIgI", "PLT3bOBUU3L9g0aergP43HK9ihc_UG7Kbx"),
+      mk("cal", 2, "Calculus and ODE Unit 2", "swF628VHQDo", "PLMBARyqASPojTZP7JXdi8zb5YB0dzmugY"),
+      mk("cal", 3, "Calculus and ODE Unit 3", "E2yfGTX8aoI", "PLT3bOBUU3L9hiaoMvkO_h1Y4u-4r-CuSi"),
+      mk("cal", 4, "Calculus and ODE Unit 4", "wGXP5achaLE", "PLT3bOBUU3L9jILVs8OZy3HzzuHG4vO2gN"),
+    ],
+  },
+  {
+    subjectId: "ads",
+    subjectName: "Advance Data Structure",
+    units: [
+      mk("ads", 1, "Advance Data Structure Unit 1", "Y3Ckd3OW0_g", "PLxCzCOWd7aiEwaANNt3OqJPVIxwp2ebiT"),
+      mk("ads", 2, "Advance Data Structure Unit 2", "z0Vnno96_MA", "PLxCzCOWd7aiEwaANNt3OqJPVIxwp2ebiT"),
+      mk("ads", 3, "Advance Data Structure Unit 3", "E9DOBLNB-aE", "PLxCzCOWd7aiEwaANNt3OqJPVIxwp2ebiT"),
+      mk("ads", 4, "Advance Data Structure Unit 4", "I16sYpAwBEg", "PLxCzCOWd7aiEwaANNt3OqJPVIxwp2ebiT"),
+    ],
+  },
+  {
+    subjectId: "cpp",
+    subjectName: "Programming with C++",
+    units: [
+      mk("cpp", 1, "Programming with C++ Unit 1", "yAfdQGyrYeo", "PLxCzCOWd7aiF6yRNI5OHQsnUJQfl7Geqj"),
+      mk("cpp", 2, "Programming with C++ Unit 2", "ipd4SQY0Ehg", "PLxCzCOWd7aiF6yRNI5OHQsnUJQfl7Geqj"),
+      mk("cpp", 3, "Programming with C++ Unit 3", "aD6uxHWec-E", "PLxCzCOWd7aiF6yRNI5OHQsnUJQfl7Geqj"),
+      mk("cpp", 4, "Programming with C++ Unit 4", "7mqEAihxJks", "PLxCzCOWd7aiF6yRNI5OHQsnUJQfl7Geqj"),
+    ],
+  },
+  {
+    subjectId: "aiml",
+    subjectName: "Introduction to AI and ML",
+    units: [
+      mk("aiml", 1, "AI and ML Unit 1", "uB3i-qV6VdM", "PLxCzCOWd7aiHGhOHV-nwb0HR5US5GFKFI"),
+      mk("aiml", 2, "AI and ML Unit 2", "kz184QIO4ZQ", "PLRMs2EJPx4DXDtffzY01p6sTIrrBkPj0O"),
+      mk("aiml", 3, "AI and ML Unit 3", "EYeF2e2IKEo", "PLRMs2EJPx4DXDtffzY01p6sTIrrBkPj0O"),
+      mk("aiml", 4, "AI and ML Unit 4", "HsdiMkKnNLk", "PLRMs2EJPx4DXDtffzY01p6sTIrrBkPj0O"),
+    ],
+  },
 ];
 
 export const getAllLectures = (): SubjectLectures[] => lectureData;
