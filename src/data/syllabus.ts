@@ -793,12 +793,12 @@ const semesters: Semester[] = [
   {
     number: 3,
     subjects: [
-      sub("digital-electronics", "Digital Electronics", "CSE-201"),
-      sub("ads", "Advanced Data Structures", "CSE-203"),
+      sub("digital-electronics", "Digital Electronics", "CSE-201", deUnits),
+      sub("ads", "Advanced Data Structures", "CSE-203", adsUnits),
       sub("dbms", "Database Management Systems with SQL", "CSE-205", dbmsUnits),
-      sub("cpp", "Programming with C++", "CSE-207"),
-      sub("intro-aiml", "Introduction to AI and ML", "CSE-209"),
-      sub("calculus-ode", "Calculus & Ordinary Differential Equations", "BSM-201"),
+      sub("cpp", "Programming with C++", "CSE-207", cppUnits),
+      sub("intro-aiml", "Introduction to AI and ML", "CSE-209", aimlUnits),
+      sub("calculus-ode", "Calculus & Ordinary Differential Equations", "BSM-201", calUnits),
     ],
   },
   {
