@@ -64,14 +64,30 @@ export default function QuizPage() {
       if (error) throw error;
 
       const content = data?.content || "";
-      // Extract JSON from the response
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("Invalid quiz format");
+      // Strip markdown fences if present
+      const cleaned = content.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
 
-      const parsed = JSON.parse(jsonMatch[0]);
-      if (!parsed.questions || parsed.questions.length === 0) throw new Error("No questions generated");
+      // Try array first (per system prompt), then object with questions key
+      let questionsArr: QuizQuestion[] | null = null;
+      const arrMatch = cleaned.match(/\[[\s\S]*\]/);
+      const objMatch = cleaned.match(/\{[\s\S]*\}/);
+      try {
+        if (arrMatch) {
+          const parsed = JSON.parse(arrMatch[0]);
+          if (Array.isArray(parsed)) questionsArr = parsed;
+        }
+      } catch {}
+      if (!questionsArr && objMatch) {
+        try {
+          const parsed = JSON.parse(objMatch[0]);
+          if (Array.isArray(parsed?.questions)) questionsArr = parsed.questions;
+          else if (Array.isArray(parsed)) questionsArr = parsed;
+        } catch {}
+      }
 
-      setQuestions(parsed.questions);
+      if (!questionsArr || questionsArr.length === 0) throw new Error("No questions generated");
+
+      setQuestions(questionsArr);
     } catch (e: any) {
       toast.error(e.message || "Failed to generate quiz. Try again.");
     } finally {
